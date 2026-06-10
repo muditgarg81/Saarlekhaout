@@ -10,7 +10,8 @@ import {
   bulkDeleteItems,
   createDepartment,
   updateDepartment,
-  deleteDepartment
+  deleteDepartment,
+  updateReorderLevels
 } from "@/app/actions/items";
 import { 
   Search, 
@@ -25,7 +26,10 @@ import {
   Info,
   ShieldAlert,
   Upload,
-  Trash2
+  Trash2,
+  Save,
+  Check,
+  Loader2
 } from "lucide-react";
 import * as utils from "xlsx";
 
@@ -81,6 +85,13 @@ export default function ItemMasterList({ initialItems, categories, departments }
   const [selectedType, setSelectedType] = useState("all");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedItemIds, setSelectedItemIds] = useState<string[]>([]);
+  
+  // Inline Reorder Level editing state
+  const [isEditingReorders, setIsEditingReorders] = useState(false);
+  const [tempReorders, setTempReorders] = useState<Record<string, number | string>>({});
+  const [isSavingReorders, setIsSavingReorders] = useState(false);
+  const [reordersError, setReordersError] = useState<string | null>(null);
+  const [reordersSuccess, setReordersSuccess] = useState<string | null>(null);
   
   // Tab states
   const [activeTab, setActiveTab] = useState<"items" | "departments">("items");
@@ -722,6 +733,64 @@ export default function ItemMasterList({ initialItems, categories, departments }
     }
   };
 
+  const startEditingReorders = () => {
+    const levels: Record<string, number> = {};
+    items.forEach(item => {
+      levels[item.id] = item.reorderLevel;
+    });
+    setTempReorders(levels);
+    setReordersError(null);
+    setReordersSuccess(null);
+    setIsEditingReorders(true);
+  };
+
+  const cancelEditingReorders = () => {
+    setIsEditingReorders(false);
+    setTempReorders({});
+    setReordersError(null);
+  };
+
+  const saveReorders = async () => {
+    setReordersError(null);
+    setReordersSuccess(null);
+    
+    const updates = Object.entries(tempReorders)
+      .map(([id, val]) => ({ id, reorderLevel: val === "" ? 0 : Number(val) }))
+      .filter(({ id, reorderLevel }) => {
+        const original = items.find(item => item.id === id);
+        return original && original.reorderLevel !== reorderLevel;
+      });
+
+    if (updates.length === 0) {
+      setIsEditingReorders(false);
+      return;
+    }
+
+    setIsSavingReorders(true);
+
+    try {
+      const res = await updateReorderLevels(updates);
+      if (res.success) {
+        setItems(prev => prev.map(item => {
+          const updated = updates.find(u => u.id === item.id);
+          if (updated) {
+            return { ...item, reorderLevel: updated.reorderLevel };
+          }
+          return item;
+        }));
+        setReordersSuccess(`Successfully updated reorder levels for ${res.count} items.`);
+        setIsEditingReorders(false);
+        setTimeout(() => setReordersSuccess(null), 3000);
+      } else {
+        setReordersError(res.error || "Failed to update reorder levels");
+      }
+    } catch (err: any) {
+      setReordersError(err.message || "An unexpected error occurred");
+    } finally {
+      setIsSavingReorders(false);
+    }
+  };
+
   const exportToExcel = () => {
     const dataToExport = filteredItems.map(item => ({
       "Item Code": item.code,
@@ -898,6 +967,65 @@ export default function ItemMasterList({ initialItems, categories, departments }
         )}
       </div>
 
+      {/* Reorders Error / Success Alerts */}
+      {reordersError && (
+        <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-lg text-xs text-red-800 font-semibold flex items-center space-x-2 animate-in fade-in duration-200">
+          <ShieldAlert size={14} className="text-red-500 shrink-0" />
+          <span>{reordersError}</span>
+        </div>
+      )}
+
+      {reordersSuccess && (
+        <div className="p-3 bg-green-50 border-l-4 border-green-500 rounded-r-lg text-xs text-green-800 font-semibold flex items-center space-x-2 animate-in fade-in duration-200">
+          <Check size={14} className="text-green-500 shrink-0" />
+          <span>{reordersSuccess}</span>
+        </div>
+      )}
+
+      {/* Bulk Reorder Edit Actions Banner */}
+      {isEditingReorders && (
+        <div className="glass-card bg-cream-dark/45 border-l-4 border-saffron p-4 rounded-xl flex flex-col md:flex-row md:items-center md:justify-between gap-4 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex items-center space-x-2.5">
+            <span className="relative flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-saffron opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-saffron-dark"></span>
+            </span>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider text-onyx">✏️ Bulk Editing Reorder Levels</h4>
+              <p className="text-[10px] text-onyx/50 mt-0.5">Adjust reorder levels directly in the table cells below. Click Save to commit changes.</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-2 shrink-0">
+            <button
+              onClick={cancelEditingReorders}
+              disabled={isSavingReorders}
+              type="button"
+              className="px-3 py-1.5 border border-onyx/10 hover:bg-cream-dark text-xs font-bold rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={saveReorders}
+              disabled={isSavingReorders}
+              type="button"
+              className="flex items-center space-x-1.5 px-3 py-1.5 bg-saffron hover:bg-saffron-dark text-xs font-bold text-onyx rounded-lg shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-50"
+            >
+              {isSavingReorders ? (
+                <>
+                  <Loader2 size={13} className="animate-spin" />
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={13} />
+                  <span>Save Changes</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Dense Table */}
       <div className="glass-card rounded-xl border border-onyx/5 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
@@ -918,7 +1046,19 @@ export default function ItemMasterList({ initialItems, categories, departments }
                 <th>Department</th>
                 <th>Type</th>
                 <th>Base UOM</th>
-                <th className="text-right">Reorder Level</th>
+                <th className="text-right">
+                  <button
+                    onClick={isEditingReorders ? cancelEditingReorders : startEditingReorders}
+                    type="button"
+                    className={`inline-flex items-center space-x-1.5 hover:text-saffron transition-colors cursor-pointer ml-auto font-bold uppercase tracking-wider text-right ${
+                      isEditingReorders ? "text-saffron font-black" : ""
+                    }`}
+                    title={isEditingReorders ? "Cancel Edit Mode" : "Click to edit Reorder Levels inline"}
+                  >
+                    <span>Reorder Level</span>
+                    <Edit3 size={12} className={isEditingReorders ? "text-saffron animate-pulse" : "text-onyx/40"} />
+                  </button>
+                </th>
                 <th className="text-center">QC Check</th>
                 <th className="text-center">Status</th>
                 <th className="text-center">Actions</th>
@@ -959,7 +1099,27 @@ export default function ItemMasterList({ initialItems, categories, departments }
                         {item.type.replace("_", " ")}
                       </td>
                       <td>{item.baseUom}</td>
-                      <td className="text-right font-semibold font-mono">{item.reorderLevel}</td>
+                      <td className="text-right">
+                        {isEditingReorders ? (
+                          <input
+                            type="number"
+                            min="0"
+                            step="any"
+                            value={tempReorders[item.id] !== undefined ? tempReorders[item.id] : ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              setTempReorders(prev => ({
+                                ...prev,
+                                [item.id]: raw === "" ? "" as any : parseFloat(raw)
+                              }));
+                            }}
+                            disabled={isSavingReorders}
+                            className="w-20 px-2 py-0.5 text-right bg-white border border-onyx/20 rounded focus:outline-none focus:border-saffron focus:ring-1 focus:ring-saffron text-xs font-mono font-bold transition-all"
+                          />
+                        ) : (
+                          <span className="font-semibold font-mono">{item.reorderLevel}</span>
+                        )}
+                      </td>
                       <td className="text-center">
                         {item.qcRequired ? (
                           <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">

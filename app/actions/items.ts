@@ -760,3 +760,62 @@ export async function deleteDepartment(id: string) {
   }
 }
 
+export async function updateReorderLevels(updates: Array<{ id: string; reorderLevel: number }>) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    if (!updates || updates.length === 0) {
+      return { success: false, error: "No updates provided" };
+    }
+
+    for (const update of updates) {
+      if (typeof update.reorderLevel !== "number" || update.reorderLevel < 0 || isNaN(update.reorderLevel)) {
+        return { success: false, error: "Reorder level must be a non-negative number" };
+      }
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      const updatedItems = [];
+      for (const update of updates) {
+        const original = await tx.item.findFirst({
+          where: { id: update.id, companyId, deletedAt: null }
+        });
+        if (!original) continue;
+
+        if (original.reorderLevel === update.reorderLevel) continue;
+
+        const updated = await tx.item.update({
+          where: { id: update.id },
+          data: { reorderLevel: update.reorderLevel }
+        });
+
+        await logAudit(
+          tx,
+          companyId,
+          actorId,
+          "UPDATE",
+          "Item",
+          update.id,
+          { reorderLevel: original.reorderLevel },
+          { reorderLevel: update.reorderLevel }
+        );
+        updatedItems.push(updated);
+      }
+      return updatedItems;
+    }, {
+      maxWait: 15000,
+      timeout: 60000
+    });
+
+    revalidatePath("/stores/items");
+    return { success: true, count: result.length };
+  } catch (err: any) {
+    console.error("Error bulk updating reorder levels:", err);
+    return { success: false, error: err.message || "Failed to update reorder levels" };
+  }
+}
+
