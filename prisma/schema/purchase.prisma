@@ -249,6 +249,7 @@ model PurchaseOrder {
   approvedById String?
   approvedAt   DateTime?
   deletedAt    DateTime?
+  otherCharges Float    @default(0)
   vendor       Vendor   @relation(fields: [vendorId], references: [id])
   lines        PoLine[]
   amendments   PoAmendment[]

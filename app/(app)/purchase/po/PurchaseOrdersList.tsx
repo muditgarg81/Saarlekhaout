@@ -79,6 +79,7 @@ interface PORecord {
   totalValue: number;
   lines: LineItem[];
   amendments: AmendmentRecord[];
+  otherCharges: number;
 }
 
 interface Item {
@@ -194,6 +195,7 @@ export default function PurchaseOrdersList({
     shipTo: string;
     termsConditions: string;
     termsPresetId: string;
+    otherCharges: number;
     lines: { itemId: string; qty: number; rate: number; discount: number; gstRate: number }[];
     rfqId?: string | null;
   }>({
@@ -205,6 +207,7 @@ export default function PurchaseOrdersList({
     shipTo: "",
     termsConditions: "1. Standard warranty of 1 year applies from the date of receipt.\n2. Goods must be delivered in proper industrial packaging.\n3. Late delivery penalty of 0.5% per week, capped at 5% of total PO value.",
     termsPresetId: "",
+    otherCharges: 0,
     lines: []
   });
   const [newPoLine, setNewPoLine] = useState({ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 });
@@ -218,6 +221,7 @@ export default function PurchaseOrdersList({
     shipTo: "",
     termsConditions: "",
     termsPresetId: "",
+    otherCharges: 0,
     lines: [] as { itemId: string; qty: number; rate: number; discount: number; gstRate: number }[]
   });
 
@@ -242,6 +246,7 @@ export default function PurchaseOrdersList({
           shipTo: prefill.shipTo || (shipToLocations.length > 0 ? `${shipToLocations[0].name} (${shipToLocations[0].address})` : ""),
           termsConditions: prefill.termsConditions || "1. Standard warranty of 1 year applies from the date of receipt.\n2. Goods must be delivered in proper industrial packaging.\n3. Late delivery penalty of 0.5% per week, capped at 5% of total PO value.",
           termsPresetId: "",
+          otherCharges: prefill.otherCharges || 0,
           lines: prefill.lines || []
         });
         setIsOpen(true);
@@ -408,22 +413,30 @@ export default function PurchaseOrdersList({
     return discounted * (1 + gstRate / 100);
   };
 
-  const getLandedTotal = (lines: { qty: number; rate: number; discount: number; gstRate: number }[]) => {
-    return lines.reduce((sum, l) => sum + calculateLandedCost(l.qty, l.rate, l.discount, l.gstRate), 0);
+  const getLandedTotal = (lines: { qty: number; rate: number; discount: number; gstRate: number }[], otherCharges = 0) => {
+    return computePoTotals(lines, otherCharges).grandTotal;
   };
 
-  const computePoTotals = (lines: { qty: number; rate: number; discount: number; gstRate: number }[]) => {
+  const computePoTotals = (
+    lines: { qty: number; rate: number; discount: number; gstRate: number }[],
+    otherCharges = 0
+  ) => {
     let basicTotal = 0;
     let discountTotal = 0;
     let gstTotal = 0;
     let grandTotal = 0;
 
+    const totalTaxable = lines.reduce((sum, line) => {
+      return sum + line.qty * line.rate * (1 - line.discount / 100);
+    }, 0);
+
     lines.forEach((line) => {
       const basic = line.qty * line.rate;
       const discount = basic * (line.discount / 100);
       const taxable = basic - discount;
-      const gst = taxable * (line.gstRate / 100);
-      const landed = taxable + gst;
+      const allocatedOtherCharges = totalTaxable > 0 ? otherCharges * (taxable / totalTaxable) : 0;
+      const gst = (taxable + allocatedOtherCharges) * (line.gstRate / 100);
+      const landed = taxable + allocatedOtherCharges + gst;
 
       basicTotal += basic;
       discountTotal += discount;
@@ -615,7 +628,7 @@ export default function PurchaseOrdersList({
 
     // 4. Totals Breakdown block
     const finalY = (doc as any).lastAutoTable.finalY || 120;
-    const totals = computePoTotals(po.lines);
+    const totals = computePoTotals(po.lines, po.otherCharges);
     
     let currentY = finalY + 10;
     doc.setFont("helvetica", "normal");
@@ -629,6 +642,12 @@ export default function PurchaseOrdersList({
       currentY += 5;
       doc.text("Total Discount (-):", 120, currentY);
       doc.text(`-INR ${totals.discountTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, 195, currentY, { align: "right" });
+    }
+
+    if (po.otherCharges > 0) {
+      currentY += 5;
+      doc.text("Other Charges (+):", 120, currentY);
+      doc.text(`INR ${po.otherCharges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, 195, currentY, { align: "right" });
     }
 
     currentY += 5;
@@ -769,6 +788,7 @@ export default function PurchaseOrdersList({
       shipTo: po.shipTo || "",
       termsConditions: po.termsConditions || "",
       termsPresetId: po.termsPresetId || "",
+      otherCharges: po.otherCharges || 0,
       lines: po.lines.map(line => ({
         itemId: line.itemId,
         qty: line.qty,
@@ -843,6 +863,7 @@ export default function PurchaseOrdersList({
       shipTo: po.shipTo || "",
       termsConditions: po.termsConditions || "",
       termsPresetId: po.termsPresetId || "",
+      otherCharges: po.otherCharges || 0,
       lines: po.lines.map(l => ({
         itemId: l.itemId,
         qty: l.qty,
@@ -913,6 +934,7 @@ export default function PurchaseOrdersList({
                 shipTo: shipToLocations.length > 0 ? `${shipToLocations[0].name} (${shipToLocations[0].address})` : "",
                 termsConditions: "1. Standard warranty of 1 year applies from the date of receipt.\n2. Goods must be delivered in proper industrial packaging.\n3. Late delivery penalty of 0.5% per week, capped at 5% of total PO value.",
                 termsPresetId: "",
+                otherCharges: 0,
                 lines: []
               });
               setIsOpen(true);
@@ -1169,7 +1191,7 @@ export default function PurchaseOrdersList({
               </div>
 
               {/* Terms & Delivery Location */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">
                     Payment Terms *
@@ -1192,6 +1214,22 @@ export default function PurchaseOrdersList({
                     onChange={(e) => setNewPo(prev => ({ ...prev, freightTerms: e.target.value }))}
                     className="w-full text-xs p-2.5 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
                     required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">
+                    Other Charges (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={newPo.otherCharges || ""}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setNewPo(prev => ({ ...prev, otherCharges: val }));
+                    }}
+                    className="w-full text-xs p-2.5 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron font-mono"
+                    placeholder="0.00"
                   />
                 </div>
               </div>
@@ -1387,7 +1425,7 @@ export default function PurchaseOrdersList({
                     PO Items List ({newPo.lines.length})
                   </label>
                   <p className="text-xs font-bold text-saffron-dark font-mono">
-                    Landed Est: ₹{getLandedTotal(newPo.lines).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                    Landed Est: ₹{getLandedTotal(newPo.lines, newPo.otherCharges).toLocaleString("en-IN", { minimumFractionDigits: 2 })}
                   </p>
                 </div>
                 {newPo.lines.length === 0 ? (
@@ -1526,7 +1564,8 @@ export default function PurchaseOrdersList({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Freight Terms, Other Charges & Ship-To Master */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">
                     Freight Terms *
@@ -1537,6 +1576,22 @@ export default function PurchaseOrdersList({
                     value={amendForm.freightTerms}
                     onChange={(e) => setAmendForm(prev => ({ ...prev, freightTerms: e.target.value }))}
                     className="w-full text-xs p-2.5 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">
+                    Other Charges (₹)
+                  </label>
+                  <input
+                    type="number"
+                    step="any"
+                    value={amendForm.otherCharges || ""}
+                    onChange={(e) => {
+                      const val = parseFloat(e.target.value) || 0;
+                      setAmendForm(prev => ({ ...prev, otherCharges: val }));
+                    }}
+                    className="w-full text-xs p-2.5 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron font-mono"
+                    placeholder="0.00"
                   />
                 </div>
                 <div>
@@ -1885,7 +1940,7 @@ export default function PurchaseOrdersList({
 
                 {/* Totals Breakdown */}
                 {(() => {
-                  const totals = computePoTotals(selectedPO.lines);
+                  const totals = computePoTotals(selectedPO.lines, selectedPO.otherCharges);
                   return (
                     <div className="p-3 bg-cream-dark/30 border border-onyx/5 rounded-lg space-y-1.5 text-xs">
                       <div className="flex justify-between">
@@ -1896,6 +1951,12 @@ export default function PurchaseOrdersList({
                         <div className="flex justify-between">
                           <span className="text-onyx/60 font-semibold">Total Discount (-):</span>
                           <span className="font-mono text-red-600 font-bold">-₹{totals.discountTotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                        </div>
+                      )}
+                      {selectedPO.otherCharges > 0 && (
+                        <div className="flex justify-between">
+                          <span className="text-onyx/60 font-semibold">Other Charges (+):</span>
+                          <span className="font-mono text-onyx">₹{selectedPO.otherCharges.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
                         </div>
                       )}
                       <div className="flex justify-between">

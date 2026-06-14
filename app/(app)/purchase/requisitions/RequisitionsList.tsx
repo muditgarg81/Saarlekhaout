@@ -619,6 +619,7 @@ export default function RequisitionsList({
     const poDetails = {
       vendorId: quote.vendorId,
       rfqId: rfq.id,
+      otherCharges: (quote.freight || 0) + (quote.packingCharges || 0),
       lines: quote.lines.map(ql => {
         const rfqLine = rfq.lines.find(rl => rl.itemId === ql.itemId);
         return {

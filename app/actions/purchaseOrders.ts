@@ -28,6 +28,7 @@ const poSchema = z.object({
   termsPresetId: z.string().optional().nullable(),
   rateContractExpiry: z.string().optional().nullable(),
   rfqId: z.string().optional().nullable(),
+  otherCharges: z.number().nonnegative().default(0),
   lines: z.array(poLineSchema).min(1, "PO must contain at least one line item"),
 });
 
@@ -40,10 +41,18 @@ const APPROVAL_LIMITS: { [role: string]: number } = {
   APPROVER: Infinity,
 };
 
-function calculateTotalValue(lines: { qty: number; rate: number; discount: number; gstRate: number }[]) {
+function calculateTotalValue(
+  lines: { qty: number; rate: number; discount: number; gstRate: number }[],
+  otherCharges = 0
+) {
+  const totalTaxable = lines.reduce((sum, line) => {
+    return sum + line.qty * line.rate * (1 - line.discount / 100);
+  }, 0);
+
   return lines.reduce((sum, line) => {
-    const discounted = line.qty * line.rate * (1 - line.discount / 100);
-    const landed = discounted * (1 + line.gstRate / 100);
+    const taxable = line.qty * line.rate * (1 - line.discount / 100);
+    const allocatedOtherCharges = totalTaxable > 0 ? otherCharges * (taxable / totalTaxable) : 0;
+    const landed = (taxable + allocatedOtherCharges) * (1 + line.gstRate / 100);
     return sum + landed;
   }, 0);
 }
@@ -173,6 +182,7 @@ export async function createPO(data: z.infer<typeof poSchema>) {
           termsPresetId: validated.termsPresetId || null,
           rateContractExpiry: validated.rateContractExpiry ? new Date(validated.rateContractExpiry) : null,
           prId: validated.rfqId || null, // store rfq reference
+          otherCharges: validated.otherCharges,
           version: 1,
           lines: {
             create: validated.lines.map((l) => ({
@@ -251,7 +261,7 @@ export async function approvePO(poId: string) {
     if (!po) return { success: false, error: "PO not found" };
 
     // Run server-side value approval limit check
-    const totalVal = calculateTotalValue(po.lines);
+    const totalVal = calculateTotalValue(po.lines, po.otherCharges);
     const limit = APPROVAL_LIMITS[userRole] || 0;
 
     if (totalVal > limit) {
@@ -296,6 +306,7 @@ export async function amendPO(
     shipTo?: string | null;
     termsConditions?: string | null;
     termsPresetId?: string | null;
+    otherCharges?: number;
     lines: { itemId: string; qty: number; rate: number; discount: number; gstRate: number }[];
   }
 ) {
@@ -313,7 +324,8 @@ export async function amendPO(
     });
     if (!po) return { success: false, error: "PO not found" };
 
-    const newTotalVal = calculateTotalValue(data.lines);
+    const otherChargesVal = data.otherCharges !== undefined ? data.otherCharges : po.otherCharges;
+    const newTotalVal = calculateTotalValue(data.lines, otherChargesVal);
     const userLimit = APPROVAL_LIMITS[userRole] || 0;
     const shouldReTriggerApproval = newTotalVal > userLimit || po.status === PoStatus.APPROVED;
 
@@ -334,6 +346,7 @@ export async function amendPO(
             termsPresetId: po.termsPresetId,
             resolvedTermsText: po.resolvedTermsText,
             termsVersion: po.termsVersion,
+            otherCharges: po.otherCharges,
             lines: po.lines,
           })),
           createdById: actorId,
@@ -357,6 +370,7 @@ export async function amendPO(
           shipTo: data.shipTo !== undefined ? data.shipTo : po.shipTo,
           termsConditions: data.termsConditions !== undefined ? data.termsConditions : po.termsConditions,
           termsPresetId: data.termsPresetId !== undefined ? data.termsPresetId : po.termsPresetId,
+          otherCharges: otherChargesVal,
           resolvedTermsText: null, // Clear frozen text
           termsVersion: null,
           lines: {
@@ -491,6 +505,7 @@ export async function updatePO(poId: string, data: z.infer<typeof poSchema>) {
           termsPresetId: validated.termsPresetId || null,
           rateContractExpiry: validated.rateContractExpiry ? new Date(validated.rateContractExpiry) : null,
           prId: validated.rfqId || null,
+          otherCharges: validated.otherCharges,
           lines: {
             create: validated.lines.map((l) => ({
               itemId: l.itemId,

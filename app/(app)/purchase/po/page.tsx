@@ -116,8 +116,17 @@ export default async function PurchaseOrdersPage() {
   // Map PO database objects to clean serializable props for the client component
   const mappedPOs = pos.map((po) => {
     const approver = users.find((u) => u.id === po.approvedById);
+    
+    const totalTaxable = po.lines.reduce((sum, line) => {
+      return sum + line.qty * line.rate * (1 - line.discount / 100);
+    }, 0);
+
     const totalValue = po.lines.reduce((sum, line) => {
-      return sum + calculateLandedCost(line.qty, line.rate, line.discount, line.gstRate);
+      const basic = line.qty * line.rate;
+      const taxable = basic * (1 - line.discount / 100);
+      const allocatedOtherCharges = totalTaxable > 0 ? po.otherCharges * (taxable / totalTaxable) : 0;
+      const landed = (taxable + allocatedOtherCharges) * (1 + line.gstRate / 100);
+      return sum + landed;
     }, 0);
 
     return {
@@ -140,6 +149,7 @@ export default async function PurchaseOrdersPage() {
       termsVersion: po.termsVersion,
       resolvedTermsText: po.resolvedTermsText,
       version: po.version,
+      otherCharges: po.otherCharges,
       approvedBy: approver ? (approver.name || approver.email) : null,
       approvedAt: po.approvedAt ? po.approvedAt.toISOString() : null,
       totalValue,

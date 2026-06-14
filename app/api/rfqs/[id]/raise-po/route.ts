@@ -95,9 +95,15 @@ export async function POST(
         const vendor = vendors.find((v) => v.id === vendorId);
         const poNumber = await getNextSequence(companyId, "PO");
 
+        // Fetch Quotation to get freight and packingCharges
+        const quotation = await tx.quotation.findFirst({
+          where: { rfqId, vendorId, companyId }
+        });
+        const otherCharges = quotation ? (quotation.freight || 0) + (quotation.packingCharges || 0) : 0;
+
         // Compute PO lines details
         const poLinesData = [];
-        let poTotalValue = 0;
+        let totalTaxable = 0;
 
         for (const alloc of allocs) {
           const rfqLine = rfq.lines.find((l) => l.id === alloc.rfqLineId)!;
@@ -122,14 +128,25 @@ export async function POST(
             rfqLineId: rfqLine.id,
             prLineId: rfqLine.prLineId,
             allocationId: alloc.id, // helper reference
+            moq: item.moq,
+            itemCode: item.code,
           });
 
-          const landedCost = alloc.qty * qLine.rate * (1 - qLine.discount / 100) * (1 + qLine.gstRate / 100);
-          poTotalValue += landedCost;
+          const basicTaxable = alloc.qty * qLine.rate * (1 - qLine.discount / 100);
+          totalTaxable += basicTaxable;
+        }
+
+        // Calculate landed PO total value including pro-rata otherCharges
+        let poTotalValue = 0;
+        for (const pld of poLinesData) {
+          const taxable = pld.qty * pld.rate * (1 - pld.discount / 100);
+          const allocatedOtherCharges = totalTaxable > 0 ? otherCharges * (taxable / totalTaxable) : 0;
+          const landedLine = (taxable + allocatedOtherCharges) * (1 + pld.gstRate / 100);
+          poTotalValue += landedLine;
 
           // Check item MOQ warning
-          if (alloc.qty < item.moq) {
-            warnings.push(`MOQ Warning: Quantity (${alloc.qty}) for item [${item.code}] is below its MOQ (${item.moq}) for vendor "${vendor?.name || vendorId}".`);
+          if (pld.qty < pld.moq) {
+            warnings.push(`MOQ Warning: Quantity (${pld.qty}) for item [${pld.itemCode}] is below its MOQ (${pld.moq}) for vendor "${vendor?.name || vendorId}".`);
           }
         }
 
@@ -151,6 +168,7 @@ export async function POST(
             shipTo: shipTo || "Main Warehouse Gate 1",
             termsConditions: termsConditions || null,
             termsPresetId: termsPresetId !== undefined ? termsPresetId : (defaultPreset?.id || null),
+            otherCharges: otherCharges,
             lines: {
               create: poLinesData.map((pld) => ({
                 itemId: pld.itemId,
