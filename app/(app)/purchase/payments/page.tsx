@@ -121,21 +121,36 @@ export default async function PaymentsPage() {
     }
   });
 
-  // Find invoices that have NOT been fully paid yet
-  const paidInvoiceIds = new Set(payments.map(p => p.invoiceId).filter(Boolean));
-  const unpaidInvoices = invoices.filter(inv => !paidInvoiceIds.has(inv.id)).map(inv => {
-    const vendor = vendors.find(v => v.id === inv.vendorId);
-    const debitNotesAmount = inv.poId ? (poToDebitAmountMap.get(inv.poId) || 0) : 0;
-    return {
-      id: inv.id,
-      invoiceNo: inv.invoiceNo,
-      amount: inv.amount,
-      debitNotesAmount,
-      netAmount: inv.amount - debitNotesAmount,
-      vendorId: inv.vendorId,
-      vendorName: vendor?.name || "Unknown Vendor"
-    };
+  // Map payment sums to invoices (total paid per invoice) to support part payments schema
+  const invoicePaidSumMap = new Map<string, number>();
+  payments.forEach((pay) => {
+    if (pay.invoiceId) {
+      invoicePaidSumMap.set(pay.invoiceId, (invoicePaidSumMap.get(pay.invoiceId) || 0) + pay.amount);
+    }
   });
+
+  // Find invoices that have NOT been fully paid yet (balance > 0.01)
+  const unpaidInvoices = invoices
+    .map(inv => {
+      const vendor = vendors.find(v => v.id === inv.vendorId);
+      const debitNotesAmount = inv.poId ? (poToDebitAmountMap.get(inv.poId) || 0) : 0;
+      const netAmount = inv.amount - debitNotesAmount;
+      const paidAmount = invoicePaidSumMap.get(inv.id) || 0;
+      const balanceAmount = netAmount - paidAmount;
+
+      return {
+        id: inv.id,
+        invoiceNo: inv.invoiceNo,
+        amount: inv.amount,
+        debitNotesAmount,
+        netAmount,
+        paidAmount,
+        balanceAmount,
+        vendorId: inv.vendorId,
+        vendorName: vendor?.name || "Unknown Vendor"
+      };
+    })
+    .filter(inv => inv.balanceAmount > 0.01);
 
   // Map payments to clean UI structures
   const mappedPayments = payments.map((pay) => {
@@ -271,7 +286,7 @@ export default async function PaymentsPage() {
       vendorId: po.vendorId,
     }));
 
-  // Map due/overdue GRNs
+  // Map due/overdue GRNs supporting part payments schema
   const pendingGrns: any[] = [];
   const today = new Date();
 
@@ -289,16 +304,14 @@ export default async function PaymentsPage() {
       }
     });
 
-    // Check if GRN is already paid or has a paid payment request
-    const isPaid =
-      paymentRequests.some((pr) => pr.grnId === grn.id && pr.status === "PAID") ||
-      payments.some(
-        (pv) =>
-          pv.reference?.includes(`GRN: ${grn.number}`) ||
-          pv.reference?.includes(grn.number)
-      );
+    // Calculate total paid against this GRN (summing voucher references or paid requests)
+    const paidAmount = payments
+      .filter((pv) => pv.reference?.includes(grn.number))
+      .reduce((sum, pv) => sum + pv.amount, 0);
 
-    if (!isPaid && grnValue > 0) {
+    const balanceAmount = grnValue - paidAmount;
+
+    if (balanceAmount > 0.01) {
       // Calculate due date
       const grnDate = grn.postedAt || grn.createdAt;
       const creditDays = po?.paymentTerms
@@ -319,7 +332,9 @@ export default async function PaymentsPage() {
         vendorName: vendor?.name || "Unknown Vendor",
         poId: grn.poId || "",
         poNumber: po?.number || "",
-        amount: grnValue,
+        amount: balanceAmount, // suggest remaining balance
+        totalAmount: grnValue, // original invoice/GRN value
+        paidAmount,
         postedAt: grnDate.toISOString().split("T")[0],
         dueDate: dueDate.toISOString().split("T")[0],
         isOverdue,

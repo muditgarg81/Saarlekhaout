@@ -64,6 +64,8 @@ interface Invoice {
   netAmount: number;
   vendorId: string;
   vendorName: string;
+  paidAmount: number;
+  balanceAmount: number;
 }
 
 interface Vendor {
@@ -231,7 +233,7 @@ export default function PaymentsList({
     setNewPayment(prev => ({
       ...prev,
       invoiceId,
-      amount: inv ? inv.netAmount : 0
+      amount: inv ? inv.balanceAmount : 0
     }));
   };
 
@@ -246,17 +248,20 @@ export default function PaymentsList({
 
   const handleEditInvoiceChange = (invoiceId: string) => {
     if (invoiceId === currentPayment?.invoiceId) {
+      const originalAmt = currentPayment?.amount || 0;
+      const inv = invoices.find(i => i.id === invoiceId);
+      const allowedMax = inv ? (inv.balanceAmount + originalAmt) : originalAmt;
       setEditPayment(prev => ({
         ...prev,
         invoiceId,
-        amount: currentPayment?.netAmount || currentPayment?.amount || 0
+        amount: allowedMax
       }));
     } else {
       const inv = invoices.find(i => i.id === invoiceId);
       setEditPayment(prev => ({
         ...prev,
         invoiceId,
-        amount: inv ? inv.netAmount : 0
+        amount: inv ? inv.balanceAmount : 0
       }));
     }
   };
@@ -266,6 +271,15 @@ export default function PaymentsList({
     if (!newPayment.vendorId || newPayment.amount <= 0) {
       alert("Please select vendor and enter a positive payment amount");
       return;
+    }
+
+    if (newPayment.invoiceId) {
+      const inv = invoices.find(i => i.id === newPayment.invoiceId);
+      if (inv && newPayment.amount > inv.balanceAmount + 0.01) {
+        if (!confirm(`Warning: Payment amount (₹${newPayment.amount.toLocaleString()}) exceeds the invoice balance amount (₹${inv.balanceAmount.toLocaleString()}). Do you still want to proceed?`)) {
+          return;
+        }
+      }
     }
 
     setActionLoading(true);
@@ -299,6 +313,18 @@ export default function PaymentsList({
     if (!editPayment.vendorId || editPayment.amount <= 0) {
       alert("Please select vendor and enter a positive payment amount");
       return;
+    }
+
+    if (editPayment.invoiceId) {
+      const inv = invoices.find(i => i.id === editPayment.invoiceId);
+      const currentPay = payments.find(p => p.id === editPayment.id);
+      const originalAmt = currentPay ? currentPay.amount : 0;
+      const allowedMax = inv ? (inv.balanceAmount + originalAmt) : originalAmt;
+      if (editPayment.amount > allowedMax + 0.01) {
+        if (!confirm(`Warning: Payment amount (₹${editPayment.amount.toLocaleString()}) exceeds the allowed invoice balance (₹${allowedMax.toLocaleString()}). Do you still want to proceed?`)) {
+          return;
+        }
+      }
     }
 
     setActionLoading(true);
@@ -1517,7 +1543,14 @@ export default function PaymentsList({
                               "-"
                             )}
                           </td>
-                          <td className="font-mono font-bold text-onyx">₹{grn.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</td>
+                          <td className="font-mono text-xs">
+                            <span className="font-bold text-onyx">₹{grn.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}</span>
+                            {grn.paidAmount > 0 && (
+                              <span className="block text-[10px] text-onyx/50 font-normal">
+                                Orig: ₹{grn.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })} | Paid: ₹{grn.paidAmount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                              </span>
+                            )}
+                          </td>
                           <td suppressHydrationWarning>{new Date(grn.postedAt).toLocaleDateString()}</td>
                           <td suppressHydrationWarning className="font-semibold text-onyx">{new Date(grn.dueDate).toLocaleDateString()}</td>
                           <td>
@@ -1590,9 +1623,16 @@ export default function PaymentsList({
                   >
                     <div className="flex items-center justify-between border-b border-onyx/5 pb-2">
                       <span className="font-mono font-bold text-xs text-onyx/85">{grn.number}</span>
-                      <span className="font-mono font-bold text-xs text-saffron-dark">
-                        ₹{grn.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                      </span>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-xs text-saffron-dark block">
+                          ₹{grn.amount.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
+                        </span>
+                        {grn.paidAmount > 0 && (
+                          <span className="text-[9px] text-onyx/40 block">
+                            Paid: ₹{grn.paidAmount.toLocaleString("en-IN")}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     <div className="space-y-2 text-xs text-onyx/70">
@@ -1732,10 +1772,9 @@ export default function PaymentsList({
                   >
                     <option value="">On Account / Advance Payment</option>
                     {filteredInvoices.map(inv => {
-                      const hasDn = inv.debitNotesAmount > 0;
                       return (
                         <option key={inv.id} value={inv.id}>
-                          {inv.invoiceNo} (₹{inv.amount.toLocaleString("en-IN")}{hasDn ? ` | Net off DN: ₹${inv.netAmount.toLocaleString("en-IN")}` : ""})
+                          {inv.invoiceNo} (Net: ₹{inv.netAmount.toLocaleString("en-IN")} | Bal: ₹{inv.balanceAmount.toLocaleString("en-IN")}{inv.paidAmount > 0 ? `, Paid: ₹${inv.paidAmount.toLocaleString("en-IN")}` : ""})
                         </option>
                       );
                     })}
@@ -1909,14 +1948,13 @@ export default function PaymentsList({
                     <option value="">On Account / Advance Payment</option>
                     {currentPayment?.invoiceId && (
                       <option value={currentPayment.invoiceId}>
-                        {currentPayment.invoiceNo} (Current - ₹{currentPayment.invoiceAmount?.toLocaleString("en-IN")}{(currentPayment.debitNotesAmount || 0) > 0 ? ` | Net off DN: ₹${currentPayment.netAmount?.toLocaleString("en-IN")}` : ""})
+                        {currentPayment.invoiceNo} (Current Settle - Net: ₹{currentPayment.netAmount?.toLocaleString("en-IN")} | Paid: ₹{currentPayment.amount?.toLocaleString("en-IN")})
                       </option>
                     )}
                     {editFilteredInvoices.map(inv => {
-                      const hasDn = inv.debitNotesAmount > 0;
                       return (
                         <option key={inv.id} value={inv.id}>
-                          {inv.invoiceNo} (₹{inv.amount.toLocaleString("en-IN")}{hasDn ? ` | Net off DN: ₹${inv.netAmount.toLocaleString("en-IN")}` : ""})
+                          {inv.invoiceNo} (Net: ₹{inv.netAmount.toLocaleString("en-IN")} | Bal: ₹{inv.balanceAmount.toLocaleString("en-IN")}{inv.paidAmount > 0 ? `, Paid: ₹${inv.paidAmount.toLocaleString("en-IN")}` : ""})
                         </option>
                       );
                     })}
@@ -2697,7 +2735,7 @@ export default function PaymentsList({
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">Select Purchase Order</label>
                   <select
                     value={editRequest.poId}
-                    onChange={(e) => setNewRequest(prev => ({ ...prev, poId: e.target.value }))}
+                    onChange={(e) => setEditRequest(prev => ({ ...prev, poId: e.target.value }))}
                     className="w-full p-2 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
                   >
                     <option value="">-- Choose PO (Optional) --</option>
