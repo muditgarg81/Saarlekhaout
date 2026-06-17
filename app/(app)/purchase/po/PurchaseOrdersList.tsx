@@ -177,8 +177,18 @@ export default function PurchaseOrdersList({
   user
 }: PurchaseOrdersListProps) {
   const [purchaseOrders, setPurchaseOrders] = useState<PORecord[]>(initialPOs);
-  const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const statusParam = params.get("status");
+      if (statusParam) {
+        setStatusFilter(statusParam.toUpperCase());
+      }
+    }
+  }, []);
 
   // Dialog & Form States
   const [isOpen, setIsOpen] = useState(false);
@@ -917,13 +927,31 @@ export default function PurchaseOrdersList({
     }
   };
 
+  const isPoOverdue = (po: PORecord) => {
+    if (!po.deliveryDate) return false;
+    const activeStatuses = ["APPROVED", "SENT", "PARTIALLY_RECEIVED"];
+    if (!activeStatuses.includes(po.status)) return false;
+    const delivery = new Date(po.deliveryDate);
+    const today = new Date();
+    delivery.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
+    return delivery < today;
+  };
+
+  const getPoDisplayStatus = (po: PORecord) => {
+    if (isPoOverdue(po)) return "OVERDUE";
+    return po.status;
+  };
+
   const filteredPOs = purchaseOrders.filter(po => 
     po.number.toLowerCase().includes(search.toLowerCase()) ||
     po.vendorName.toLowerCase().includes(search.toLowerCase()) ||
     po.type.toLowerCase().includes(search.toLowerCase())
-  ).filter(po => 
-    statusFilter === "all" || po.status === statusFilter
-  );
+  ).filter(po => {
+    if (statusFilter === "all") return true;
+    if (statusFilter === "OVERDUE") return isPoOverdue(po);
+    return po.status === statusFilter;
+  });
 
   return (
     <div className="space-y-6">
@@ -990,6 +1018,7 @@ export default function PurchaseOrdersList({
           className="text-xs bg-cream-dark/45 border border-onyx/10 rounded-lg px-3 py-2 focus:outline-none focus:border-saffron"
         >
           <option value="all">All Statuses</option>
+          <option value="OVERDUE">Overdue Only</option>
           <option value="DRAFT">Draft Only</option>
           <option value="PENDING_APPROVAL">Pending Approval</option>
           <option value="APPROVED">Approved</option>
@@ -1061,13 +1090,14 @@ export default function PurchaseOrdersList({
                       </td>
                       <td className="text-center">
                         <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          getPoDisplayStatus(po) === "OVERDUE" ? "bg-red-100 text-red-800" :
                           po.status === "DRAFT" ? "bg-gray-100 text-gray-800" :
                           po.status === "PENDING_APPROVAL" ? "bg-yellow-100 text-yellow-800 animate-pulse" :
                           po.status === "APPROVED" ? "bg-green-100 text-green-800" :
                           po.status === "SENT" ? "bg-blue-100 text-blue-800" :
                           po.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-purple-100 text-purple-800"
                         }`}>
-                          {po.status.replace("_", " ")}
+                          {getPoDisplayStatus(po).replace("_", " ")}
                         </span>
                       </td>
                       <td className="text-center">
@@ -1175,13 +1205,14 @@ export default function PurchaseOrdersList({
                     </span>
                   </div>
                   <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
+                    getPoDisplayStatus(po) === "OVERDUE" ? "bg-red-100 text-red-800" :
                     po.status === "DRAFT" ? "bg-gray-100 text-gray-800" :
                     po.status === "PENDING_APPROVAL" ? "bg-yellow-100 text-yellow-800 animate-pulse" :
                     po.status === "APPROVED" ? "bg-green-100 text-green-800" :
                     po.status === "SENT" ? "bg-blue-100 text-blue-800" :
                     po.status === "CANCELLED" ? "bg-red-100 text-red-800" : "bg-purple-100 text-purple-800"
                   }`}>
-                    {po.status.replace("_", " ")}
+                    {getPoDisplayStatus(po).replace("_", " ")}
                   </span>
                 </div>
 
