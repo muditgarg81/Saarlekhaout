@@ -69,41 +69,116 @@ export async function updateRejectedMaterialStatus(
 
       // If status changes from PENDING_RETURN to a finalized state (RETURNED_TO_VENDOR, DISPOSED, or SHORT_SUPPLY), generate a Debit Note
       if ((data.status === "RETURNED_TO_VENDOR" || data.status === "DISPOSED" || data.status === "SHORT_SUPPLY") && original.status === "PENDING_RETURN") {
-        if (grnLine && grnLine.grn.vendorId) {
-          // Fetch PoLine to get exact rate, discount, and gstRate
-          let rate = 0;
-          let discount = 0;
-          let gstRate = 0;
-          if (grnLine.poLineId) {
-            const poLine = await tx.poLine.findUnique({
-              where: { id: grnLine.poLineId }
-            });
-            if (poLine) {
-              rate = poLine.rate;
-              discount = poLine.discount;
-              gstRate = poLine.gstRate;
-            }
-          }
-
-          // Calculate Debit Note value
-          const baseValue = original.rejectedQty * rate * (1 - discount / 100);
-          const gstValue = baseValue * (gstRate / 100);
-          const totalDebitAmount = Math.round((baseValue + gstValue) * 100) / 100;
-
-          // Generate Debit Note in draft (unposted) status
-          const dnNumber = await getNextSequence(companyId, "DN");
-          await tx.debitCreditNote.create({
-            data: {
-              companyId,
-              number: dnNumber,
-              type: NoteType.DEBIT,
-              vendorId: grnLine.grn.vendorId,
-              refType: "GRN_REJECTION",
-              refId: original.id,
-              amount: totalDebitAmount,
-              posted: false
-            }
+        // Resolve vendorId robustly
+        let vendorId = grnLine?.grn?.vendorId;
+        if (!vendorId) {
+          const vendorObj = await tx.vendor.findFirst({
+            where: { name: original.vendorName, companyId }
           });
+          vendorId = vendorObj?.id;
+        }
+        if (!vendorId && original.grnNumber) {
+          const grnObj = await tx.grn.findFirst({
+            where: { number: original.grnNumber, companyId }
+          });
+          vendorId = grnObj?.vendorId;
+        }
+
+        if (vendorId) {
+          // Check if a debit note already exists for this rejection to prevent duplicates
+          const existingNote = await tx.debitCreditNote.findFirst({
+            where: { refType: "GRN_REJECTION", refId: original.id, companyId }
+          });
+
+          if (!existingNote) {
+            // Fetch rate, discount, and gstRate
+            let rate = 0;
+            let discount = 0;
+            let gstRate = 0;
+
+            if (grnLine?.poLineId) {
+              const poLine = await tx.poLine.findUnique({
+                where: { id: grnLine.poLineId }
+              });
+              if (poLine) {
+                rate = poLine.rate;
+                discount = poLine.discount;
+                gstRate = poLine.gstRate;
+              }
+            } else {
+              // Fallback 1: Try to look up SupplierInvoice matching invoiceNo
+              let finalInvoiceNo = grnLine?.grn?.invoiceNo;
+              if (!finalInvoiceNo) {
+                const grnObj = await tx.grn.findFirst({
+                  where: { number: original.grnNumber, companyId }
+                });
+                finalInvoiceNo = grnObj?.invoiceNo || null;
+              }
+
+              if (finalInvoiceNo) {
+                const invoice = await tx.supplierInvoice.findFirst({
+                  where: {
+                    companyId,
+                    vendorId,
+                    invoiceNo: finalInvoiceNo,
+                    deletedAt: null
+                  },
+                  include: {
+                    lines: true
+                  }
+                });
+                if (invoice) {
+                  const item = await tx.item.findFirst({
+                    where: { code: original.itemCode, companyId }
+                  });
+                  if (item) {
+                    const invLine = invoice.lines.find((il: any) => il.itemId === item.id);
+                    if (invLine) {
+                      rate = invLine.rate;
+                    }
+                  }
+                }
+              }
+
+              // Fallback 2: Search for the latest PO line of this item across company
+              if (rate === 0) {
+                const item = await tx.item.findFirst({
+                  where: { code: original.itemCode, companyId }
+                });
+                if (item) {
+                  const latestPoLine = await tx.poLine.findFirst({
+                    where: { itemId: item.id, po: { companyId } },
+                    orderBy: { id: "desc" }
+                  });
+                  if (latestPoLine) {
+                    rate = latestPoLine.rate;
+                    discount = latestPoLine.discount;
+                    gstRate = latestPoLine.gstRate;
+                  }
+                }
+              }
+            }
+
+            // Calculate Debit Note value
+            const baseValue = original.rejectedQty * rate * (1 - discount / 100);
+            const gstValue = baseValue * (gstRate / 100);
+            const totalDebitAmount = Math.round((baseValue + gstValue) * 100) / 100;
+
+            // Generate Debit Note in draft (unposted) status
+            const dnNumber = await getNextSequence(companyId, "DN");
+            await tx.debitCreditNote.create({
+              data: {
+                companyId,
+                number: dnNumber,
+                type: NoteType.DEBIT,
+                vendorId,
+                refType: "GRN_REJECTION",
+                refId: original.id,
+                amount: totalDebitAmount,
+                posted: false
+              }
+            });
+          }
         }
       }
 
