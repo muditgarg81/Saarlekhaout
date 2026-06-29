@@ -67,13 +67,7 @@ export async function getItemValuation(
     } else if (qty < 0) {
       // Stock issue / reduction: consumes stock at the current average rate
       balanceQty += qty; // qty is negative
-      if (balanceQty < 0) {
-        // Handle negative stock scenario gracefully
-        balanceQty = 0;
-        balanceValue = 0;
-      } else {
-        balanceValue = balanceQty * currentAvgRate;
-      }
+      balanceValue = balanceQty * currentAvgRate;
     }
   }
 

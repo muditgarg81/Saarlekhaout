@@ -2,12 +2,8 @@
 
 import { useState } from "react";
 import { ErpType } from "@prisma/client";
-import { 
-  saveErpConnection, 
-  mapVendorLedger, 
-  generateBridgeAgentToken, 
-  syncCreditorsMock 
-} from "@/app/actions/erp";
+import { saveErpConnection, generateBridgeAgentToken } from "@/app/actions/erp";
+import { mapCustomerLedger, syncDebtorsMock } from "@/app/actions/salesErp";
 import { 
   Search, 
   Plus, 
@@ -38,14 +34,14 @@ interface Connection {
 
 interface Mapping {
   id: string;
-  vendorId: string;
-  vendorName: string;
+  customerId: string;
+  customerName: string;
   erpLedgerName: string;
   billwise: boolean;
   status: string;
 }
 
-interface Vendor {
+interface Customer {
   id: string;
   name: string;
   code: string;
@@ -61,11 +57,11 @@ interface Bill {
   overdueDays: number;
 }
 
-interface CreditorStatement {
+interface DebtorStatement {
   id: string;
-  vendorId: string;
-  vendorName: string;
-  vendorCode: string;
+  customerId: string;
+  customerName: string;
+  customerCode: string;
   outstanding: number;
   asOf: string;
   bills: Bill[];
@@ -74,15 +70,15 @@ interface CreditorStatement {
 interface IntegrationSettingsProps {
   connections: Connection[];
   mappings: Mapping[];
-  vendors: Vendor[];
+  customers: Customer[];
   agents: any[];
-  statements: CreditorStatement[];
+  statements: DebtorStatement[];
 }
 
 export default function IntegrationSettings({
   connections,
   mappings,
-  vendors,
+  customers,
   agents,
   statements
 }: IntegrationSettingsProps) {
@@ -92,7 +88,7 @@ export default function IntegrationSettings({
 
   const [rightTab, setRightTab] = useState<"mappings" | "statements">("mappings");
   const [statementSearch, setStatementSearch] = useState("");
-  const [selectedStatement, setSelectedStatement] = useState<CreditorStatement | null>(null);
+  const [selectedStatement, setSelectedStatement] = useState<DebtorStatement | null>(null);
   const [isStatementDetailOpen, setIsStatementDetailOpen] = useState(false);
 
   // Form states
@@ -109,7 +105,7 @@ export default function IntegrationSettings({
   });
 
   const [mapForm, setMapForm] = useState({
-    vendorId: "",
+    customerId: "",
     erpLedgerName: "",
     billwise: true
   });
@@ -155,25 +151,25 @@ export default function IntegrationSettings({
     }
   };
 
-  const handleMapVendor = async (e: React.FormEvent) => {
+  const handleMapCustomer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!activeConnection) return;
-    if (!mapForm.vendorId || !mapForm.erpLedgerName.trim()) {
-      alert("Please select a vendor and specify the ERP ledger name");
+    if (!mapForm.customerId || !mapForm.erpLedgerName.trim()) {
+      alert("Please select a customer and specify the ERP ledger name");
       return;
     }
 
     setActionLoading(true);
-    const res = await mapVendorLedger({
+    const res = await mapCustomerLedger({
       connectionId: activeConnection.id,
-      vendorId: mapForm.vendorId,
+      customerId: mapForm.customerId,
       erpLedgerName: mapForm.erpLedgerName,
       billwise: mapForm.billwise
     });
     setActionLoading(false);
 
     if (res.success) {
-      setMapForm({ vendorId: "", erpLedgerName: "", billwise: true });
+      setMapForm({ customerId: "", erpLedgerName: "", billwise: true });
       window.location.reload();
     } else {
       alert("Mapping failed: " + res.error);
@@ -183,11 +179,11 @@ export default function IntegrationSettings({
   const handleSyncMock = async () => {
     if (!activeConnection) return;
     setActionLoading(true);
-    const res = await syncCreditorsMock(activeConnection.id);
+    const res = await syncDebtorsMock(activeConnection.id);
     setActionLoading(false);
 
     if (res.success) {
-      alert("Demo sync completed! Mock outstanding statements generated for mapped vendors.");
+      alert("Demo sync completed! Mock outstanding statements generated for mapped customers.");
       window.location.reload();
     } else {
       alert("Sync failed: " + res.error);
@@ -206,7 +202,7 @@ export default function IntegrationSettings({
       {/* Top Header */}
       <div>
         <h2 className="text-xl font-bold tracking-tight text-onyx">ERP & Tally Settings</h2>
-        <p className="text-xs text-onyx/50 mt-1">Configure credentials and map local Tally Sundry Creditors ledger accounts outbound to Saarlekha cloud.</p>
+        <p className="text-xs text-onyx/50 mt-1">Configure credentials and map local Tally Sundry Debtors ledger accounts outbound to Saarlekha cloud.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -345,7 +341,7 @@ export default function IntegrationSettings({
           )}
         </div>
 
-        {/* Right: Vendor Mapping & Sync */}
+        {/* Right: Customer Mapping & Sync */}
         <div className="lg:col-span-2 space-y-6">
           {activeConnection && (
             <div className="glass-card p-5 rounded-xl border border-onyx/5 space-y-4">
@@ -371,7 +367,7 @@ export default function IntegrationSettings({
                         : "text-onyx/60 hover:bg-cream-dark/35"
                     }`}
                   >
-                    Synced Creditor Statements ({statements.length})
+                    Synced Debtor Statements ({statements.length})
                   </button>
                 </div>
 
@@ -390,17 +386,17 @@ export default function IntegrationSettings({
               {rightTab === "mappings" ? (
                 <>
                   {/* Mapping Form */}
-                  <form onSubmit={handleMapVendor} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end p-3 bg-cream-dark/30 rounded-xl border border-onyx/5">
+                  <form onSubmit={handleMapCustomer} className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end p-3 bg-cream-dark/30 rounded-xl border border-onyx/5">
                     <div className="sm:col-span-5 text-xs">
-                      <label className="block text-[9px] font-bold uppercase text-onyx/55 mb-0.5">Saarlekha Vendor</label>
+                      <label className="block text-[9px] font-bold uppercase text-onyx/55 mb-0.5">Saarlekha Customer</label>
                       <select
-                        value={mapForm.vendorId}
-                        onChange={(e) => setMapForm(prev => ({ ...prev, vendorId: e.target.value }))}
+                        value={mapForm.customerId}
+                        onChange={(e) => setMapForm(prev => ({ ...prev, customerId: e.target.value }))}
                         className="w-full p-2 bg-white border border-onyx/10 rounded focus:outline-none"
                         required
                       >
-                        <option value="">Select Vendor</option>
-                        {vendors.map(v => (
+                        <option value="">Select Customer</option>
+                        {customers.map(v => (
                           <option key={v.id} value={v.id}>[{v.code}] {v.name}</option>
                         ))}
                       </select>
@@ -431,7 +427,7 @@ export default function IntegrationSettings({
                     <table className="w-full dense-table text-left border-collapse">
                       <thead>
                         <tr>
-                          <th>Saarlekha Vendor</th>
+                          <th>Saarlekha Customer</th>
                           <th>Tally Ledger Name</th>
                           <th>Bill-by-Bill</th>
                           <th className="text-center">Sync Status</th>
@@ -447,7 +443,7 @@ export default function IntegrationSettings({
                         ) : (
                           mappings.map((m) => (
                             <tr key={m.id}>
-                              <td className="font-semibold">{m.vendorName}</td>
+                              <td className="font-semibold">{m.customerName}</td>
                               <td className="font-mono text-xs">{m.erpLedgerName}</td>
                               <td>
                                 <span className={`inline-flex px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
@@ -479,7 +475,7 @@ export default function IntegrationSettings({
                     </span>
                     <input
                       type="text"
-                      placeholder="Search synced statements by vendor..."
+                      placeholder="Search synced statements by customer..."
                       value={statementSearch}
                       onChange={(e) => setStatementSearch(e.target.value)}
                       className="w-full text-xs pl-9 pr-4 py-2 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none"
@@ -491,7 +487,7 @@ export default function IntegrationSettings({
                     <table className="w-full dense-table text-left border-collapse">
                       <thead>
                         <tr>
-                          <th>Vendor / Supplier</th>
+                          <th>Customer / Supplier</th>
                           <th>Mapped Ledger</th>
                           <th className="text-right">Outstanding (Payable)</th>
                           <th>As Of Date</th>
@@ -500,8 +496,8 @@ export default function IntegrationSettings({
                       </thead>
                       <tbody>
                         {statements.filter(s => 
-                          s.vendorName.toLowerCase().includes(statementSearch.toLowerCase()) ||
-                          s.vendorCode.toLowerCase().includes(statementSearch.toLowerCase())
+                          s.customerName.toLowerCase().includes(statementSearch.toLowerCase()) ||
+                          s.customerCode.toLowerCase().includes(statementSearch.toLowerCase())
                         ).length === 0 ? (
                           <tr>
                             <td colSpan={5} className="text-center py-6 text-xs text-onyx/40">
@@ -510,16 +506,16 @@ export default function IntegrationSettings({
                           </tr>
                         ) : (
                           statements.filter(s => 
-                            s.vendorName.toLowerCase().includes(statementSearch.toLowerCase()) ||
-                            s.vendorCode.toLowerCase().includes(statementSearch.toLowerCase())
+                            s.customerName.toLowerCase().includes(statementSearch.toLowerCase()) ||
+                            s.customerCode.toLowerCase().includes(statementSearch.toLowerCase())
                           ).map((s) => {
-                            const mapping = mappings.find(m => m.vendorId === s.vendorId);
+                            const mapping = mappings.find(m => m.customerId === s.customerId);
                             return (
                               <tr key={s.id}>
                                 <td>
                                   <div>
-                                    <p className="font-semibold">{s.vendorName}</p>
-                                    <p className="text-[10px] text-onyx/50 font-mono">{s.vendorCode}</p>
+                                    <p className="font-semibold">{s.customerName}</p>
+                                    <p className="text-[10px] text-onyx/50 font-mono">{s.customerCode}</p>
                                   </div>
                                 </td>
                                 <td className="font-mono text-xs">{mapping?.erpLedgerName || "N/A"}</td>
@@ -554,13 +550,13 @@ export default function IntegrationSettings({
         </div>
       </div>
 
-      {/* Creditor Bills Details Modal */}
+      {/* Debtor Bills Details Modal */}
       {isStatementDetailOpen && selectedStatement && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-xs flex items-center justify-center z-50 p-4">
           <div className="bg-cream max-w-2xl w-full max-h-[85vh] flex flex-col rounded-xl shadow-2xl border border-onyx/10 overflow-hidden">
             <div className="px-6 py-4 bg-onyx text-cream-light border-b border-onyx-light flex items-center justify-between">
               <div>
-                <h3 className="font-heading text-base font-bold text-cream">Outstanding Bills: {selectedStatement.vendorName}</h3>
+                <h3 className="font-heading text-base font-bold text-cream">Outstanding Bills: {selectedStatement.customerName}</h3>
                 <p className="text-[10px] text-cream-light/60 mt-0.5 font-mono">Tally Ledger Account Sync</p>
               </div>
               <button onClick={() => setIsStatementDetailOpen(false)} className="hover:text-saffron transition-colors cursor-pointer text-cream-light">
@@ -598,7 +594,7 @@ export default function IntegrationSettings({
                     {selectedStatement.bills.length === 0 ? (
                       <tr>
                         <td colSpan={6} className="text-center py-6 text-xs text-onyx/40">
-                          No outstanding bills found. Mapped vendor ledger does not have bill-by-bill enabled or is fully settled.
+                          No outstanding bills found. Mapped customer ledger does not have bill-by-bill enabled or is fully settled.
                         </td>
                       </tr>
                     ) : (

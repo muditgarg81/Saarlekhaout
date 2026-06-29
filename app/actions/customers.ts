@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { CustomerStatus, CustomerType } from "@prisma/client";
+import { can } from "@/lib/rbac";
 
 // Customer master — the debtor-side mirror of the Vendor master.
 const customerSchema = z.object({
@@ -76,6 +77,9 @@ function stateFromGstin(gstin?: string | null): string | null {
 export async function createCustomer(data: z.infer<typeof customerSchema>) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "customer.manage")) {
+    return { success: false, error: "Forbidden: Missing customer.manage permission" };
+  }
 
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
@@ -136,6 +140,9 @@ export async function updateCustomer(
 ) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "customer.manage")) {
+    return { success: false, error: "Forbidden: Missing customer.manage permission" };
+  }
 
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
@@ -184,6 +191,9 @@ export async function updateCustomer(
 export async function updateCustomerStatus(id: string, status: CustomerStatus) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "customer.approve")) {
+    return { success: false, error: "Forbidden: Missing customer.approve permission" };
+  }
 
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
@@ -217,6 +227,9 @@ export async function updateCustomerStatus(id: string, status: CustomerStatus) {
 export async function deleteCustomer(id: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "customer.manage")) {
+    return { success: false, error: "Forbidden: Missing customer.manage permission" };
+  }
 
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
@@ -264,6 +277,9 @@ export async function bulkCreateCustomers(
 ) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "customer.manage")) {
+    return { success: false, error: "Forbidden: Missing customer.manage permission" };
+  }
 
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;

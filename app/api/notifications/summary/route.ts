@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
-import { getReminders } from "@/lib/reminders";
 
 export async function GET() {
   const session = await auth();
@@ -21,19 +20,12 @@ export async function GET() {
       },
     });
 
-    // Compute live reminders
-    const reminders = await getReminders(session.user as any);
-    const activeRemindersCount = reminders.length; // Count the reminder categories
-    const totalReminderUnits = reminders.reduce((sum, r) => sum + r.count, 0);
-
-    const hasCritical = reminders.some((r) => r.severity === "red");
-
     return NextResponse.json({
       unreadNotifications: unreadNotificationsCount,
-      activeReminders: activeRemindersCount,
-      totalCount: unreadNotificationsCount + activeRemindersCount, // sum of unread notifications + open action item groups
-      totalUnits: unreadNotificationsCount + totalReminderUnits,
-      hasCritical,
+      activeReminders: 0,
+      totalCount: unreadNotificationsCount,
+      totalUnits: unreadNotificationsCount,
+      hasCritical: false,
     });
   } catch (err) {
     console.error("Error fetching notifications summary:", err);

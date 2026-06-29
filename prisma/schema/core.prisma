@@ -24,14 +24,12 @@ model Company {
   defaultStoreId    String?
   enabledModules    String[] @default(["stores", "purchase"])
 
-  users           User[]
-  departments     Department[]
-  items           Item[]
-  vendors         Vendor[]
-  customers       Customer[]
-  stores          Store[]
-  shipToLocations ShipToLocation[]
-  memberships     CompanyMembership[]
+  users       User[]
+  departments Department[]
+  items       Item[]
+  customers   Customer[]
+  stores      Store[]
+  memberships CompanyMembership[]
 
   @@schema("core")
 }

@@ -3,14 +3,13 @@
 import React, { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { 
-  LayoutDashboard, 
-  ClipboardList, 
-  History, 
-  ShoppingCart, 
-  Receipt 
+import {
+  LayoutDashboard,
+  ClipboardList,
+  Truck,
+  Receipt,
+  CreditCard,
 } from "lucide-react";
-import { can } from "@/lib/rbac";
 import Sidebar from "@/components/Sidebar";
 import Header from "@/components/Header";
 
@@ -22,29 +21,13 @@ interface AppLayoutClientProps {
 export default function AppLayoutClient({ user, children }: AppLayoutClientProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const role = user.role;
-
-  const isStore = can(user, "item.manage") || 
-                  can(user, "grn.post") || 
-                  can(user, "issue.create") || 
-                  can(user, "gatepass.create") || 
-                  can(user, "indent.create") || 
-                  can(user, "indent.approve") || 
-                  ["STORE_MANAGER", "STORE_KEEPER", "ADMIN", "OWNER"].includes(role);
-
-  const isPurchase = can(user, "pr.create") || 
-                     can(user, "pr.approve") || 
-                     can(user, "po.create") || 
-                     can(user, "po.approve") || 
-                     can(user, "vendor.manage") || 
-                     ["PURCHASE_MANAGER", "PURCHASE_OFFICER", "ADMIN", "OWNER"].includes(role);
 
   const mobileTabItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, show: true },
-    { name: "Indents", href: "/stores/indents", icon: ClipboardList, show: isStore || role === "INDENTER" },
-    { name: "GRN", href: "/stores/grn", icon: History, show: can(user, "grn.post") },
-    { name: "POs", href: "/purchase/po", icon: ShoppingCart, show: isPurchase },
-    { name: "Invoices", href: "/purchase/invoices", icon: Receipt, show: can(user, "invoice.match") }
+    { name: "Orders", href: "/sales/orders", icon: ClipboardList, show: true },
+    { name: "Dispatch", href: "/sales/dispatch", icon: Truck, show: true },
+    { name: "Invoices", href: "/sales/invoices", icon: Receipt, show: true },
+    { name: "Receipts", href: "/sales/receipts", icon: CreditCard, show: true },
   ].filter(item => item.show);
 
   return (

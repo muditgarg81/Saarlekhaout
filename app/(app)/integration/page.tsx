@@ -11,16 +11,16 @@ export default async function IntegrationPage() {
 
   const companyId = (session.user as any).companyId || "demo-company-id";
 
-  // Fetch ERP connections, vendor mappings, vendors, and bridge agents concurrently
-  const [connections, mappings, vendors, agents, statements] = await Promise.all([
+  // ERP connections, customer→ledger mappings, customers, bridge agents, debtor statements
+  const [connections, mappings, customers, agents, statements] = await Promise.all([
     db.erpConnection.findMany({
       where: { companyId },
       orderBy: { createdAt: "desc" },
     }),
-    db.vendorErpMap.findMany({
+    db.customerErpMap.findMany({
       where: { companyId },
     }),
-    db.vendor.findMany({
+    db.customer.findMany({
       where: { companyId, deletedAt: null },
       select: { id: true, name: true, code: true },
       orderBy: { code: "asc" },
@@ -29,19 +29,18 @@ export default async function IntegrationPage() {
       where: { companyId },
       orderBy: { name: "asc" },
     }),
-    db.creditorStatement.findMany({
+    db.debtorStatement.findMany({
       where: { companyId },
-      include: { bills: true }
+      include: { bills: true },
     }),
   ]);
 
-  // Clean mapped data structure for client
   const mappedConnections = connections.map((c) => {
     let demoMode = true;
     if (c.config) {
       try {
-        const parsed = typeof c.config === 'string' ? JSON.parse(c.config) : c.config;
-        demoMode = parsed.demoMode !== false;
+        const parsed = typeof c.config === "string" ? JSON.parse(c.config) : c.config;
+        demoMode = (parsed as any).demoMode !== false;
       } catch (e) {
         console.error("Failed to parse connection config", e);
       }
@@ -58,11 +57,11 @@ export default async function IntegrationPage() {
   });
 
   const mappedMappings = mappings.map((m) => {
-    const vendor = vendors.find((v) => v.id === m.vendorId);
+    const customer = customers.find((c) => c.id === m.customerId);
     return {
       id: m.id,
-      vendorId: m.vendorId,
-      vendorName: vendor?.name || "Unknown Vendor",
+      customerId: m.customerId,
+      customerName: customer?.name || "Unknown Customer",
       erpLedgerName: m.erpLedgerName,
       billwise: m.billwise,
       status: m.status,
@@ -77,12 +76,12 @@ export default async function IntegrationPage() {
   }));
 
   const mappedStatements = statements.map((s) => {
-    const vendor = vendors.find((v) => v.id === s.vendorId);
+    const customer = customers.find((c) => c.id === s.customerId);
     return {
       id: s.id,
-      vendorId: s.vendorId,
-      vendorName: vendor?.name || "Unknown Vendor",
-      vendorCode: vendor?.code || "N/A",
+      customerId: s.customerId,
+      customerName: customer?.name || "Unknown Customer",
+      customerCode: customer?.code || "N/A",
       outstanding: s.outstanding,
       asOf: s.asOf.toISOString(),
       bills: s.bills.map((b) => ({
@@ -93,7 +92,7 @@ export default async function IntegrationPage() {
         openingAmount: b.openingAmount,
         pendingAmount: b.pendingAmount,
         overdueDays: b.overdueDays || 0,
-      }))
+      })),
     };
   });
 
@@ -101,7 +100,7 @@ export default async function IntegrationPage() {
     <IntegrationSettings
       connections={mappedConnections}
       mappings={mappedMappings}
-      vendors={vendors}
+      customers={customers}
       agents={cleanAgents}
       statements={mappedStatements}
     />

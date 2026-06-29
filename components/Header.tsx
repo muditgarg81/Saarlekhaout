@@ -165,13 +165,6 @@ export default function Header({ user, onMenuClick }: HeaderProps) {
 
   const loadRemindersAndNotifications = async () => {
     try {
-      // Load action items
-      const actRes = await fetch("/api/action-items");
-      if (actRes.ok) {
-        const actData = await actRes.json();
-        setReminders(actData);
-      }
-
       // Load notifications feed
       const notifRes = await fetch("/api/notifications");
       if (notifRes.ok) {

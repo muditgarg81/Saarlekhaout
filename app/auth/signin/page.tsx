@@ -55,7 +55,7 @@ export default function SignInPage() {
             Saarlekha
           </h2>
           <p className="mt-2 text-xs font-mono font-bold tracking-widest text-onyx/60 uppercase">
-            STORES & PURCHASE
+            SALES & DISPATCH
           </p>
         </div>
 

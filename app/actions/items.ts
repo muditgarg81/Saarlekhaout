@@ -872,38 +872,20 @@ export async function getItemStockLogs(
       select: { id: true, name: true },
     });
 
-    // Resolve reference numbers (GRN / Issue / Rejection)
-    const grnIds = Array.from(new Set(logs.filter((l) => l.refType === "GRN" && l.refId).map((l) => l.refId as string)));
-    const grns = grnIds.length > 0 ? await db.grn.findMany({
-      where: { id: { in: grnIds }, companyId },
+    // Resolve reference numbers (Dispatch / Delivery Challan)
+    const dispatchIds = Array.from(new Set(logs.filter((l) => l.refType === "DISPATCH" && l.refId).map((l) => l.refId as string)));
+    const dispatches = dispatchIds.length > 0 ? await db.dispatch.findMany({
+      where: { id: { in: dispatchIds }, companyId },
       select: { id: true, number: true },
-    }) : [];
-
-    const issueIds = Array.from(new Set(logs.filter((l) => l.refType === "ISSUE" && l.refId).map((l) => l.refId as string)));
-    const issues = issueIds.length > 0 ? await db.issue.findMany({
-      where: { id: { in: issueIds }, companyId },
-      select: { id: true, number: true },
-    }) : [];
-
-    const rejectionIds = Array.from(new Set(logs.filter((l) => l.refType === "GRN_REJECTION" && l.refId).map((l) => l.refId as string)));
-    const rejections = rejectionIds.length > 0 ? await db.rejectedMaterial.findMany({
-      where: { id: { in: rejectionIds }, companyId },
-      select: { id: true, grnNumber: true },
     }) : [];
 
     const formattedLogs = logs.map((l) => {
       const store = stores.find((s) => s.id === l.storeId);
-      
+
       let refNo = l.refId || "N/A";
-      if (l.refType === "GRN") {
-        const grn = grns.find((g) => g.id === l.refId);
-        if (grn) refNo = grn.number;
-      } else if (l.refType === "ISSUE") {
-        const issue = issues.find((i) => i.id === l.refId);
-        if (issue) refNo = issue.number;
-      } else if (l.refType === "GRN_REJECTION") {
-        const rejection = rejections.find((r) => r.id === l.refId);
-        if (rejection) refNo = `QC REJ (GRN: ${rejection.grnNumber})`;
+      if (l.refType === "DISPATCH") {
+        const d = dispatches.find((x) => x.id === l.refId);
+        if (d) refNo = d.number;
       }
 
       return {

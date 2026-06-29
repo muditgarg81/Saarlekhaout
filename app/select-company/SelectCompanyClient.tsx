@@ -210,7 +210,7 @@ function SelectCompanyContent({ memberships }: { memberships: MembershipItem[] }
 
       {/* Footer */}
       <div className="max-w-4xl mx-auto w-full text-center text-[10px] text-onyx/30 font-medium">
-        <span>Saarlekha stores & purchase system is isolated dynamically per company tenant database identifier.</span>
+        <span>Saarlekha sales & dispatch system is isolated dynamically per company tenant database identifier.</span>
       </div>
     </div>
   );

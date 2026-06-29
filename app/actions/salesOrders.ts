@@ -71,6 +71,9 @@ function soLineGross(l: { qty: number; rate: number; discount?: number; gstRate?
 export async function createSalesOrder(data: z.infer<typeof soSchema>) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "so.create")) {
+    return { success: false, error: "Forbidden: Missing so.create permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
@@ -133,6 +136,9 @@ export async function createSalesOrder(data: z.infer<typeof soSchema>) {
 export async function submitSalesOrder(id: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "so.create")) {
+    return { success: false, error: "Forbidden: Missing so.create permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
@@ -207,6 +213,9 @@ export async function approveSalesOrder(id: string) {
 export async function rejectSalesOrder(id: string, reason: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "so.approve")) {
+    return { success: false, error: "Forbidden: Missing so.approve permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
@@ -233,6 +242,9 @@ export async function rejectSalesOrder(id: string, reason: string) {
 export async function cancelSalesOrder(id: string, reason: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "so.create") && !can(session.user as any, "so.approve")) {
+    return { success: false, error: "Forbidden: Missing so.create or so.approve permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 

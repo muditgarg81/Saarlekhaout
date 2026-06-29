@@ -185,7 +185,7 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 {companyName}
               </h1>
               <p className="font-body text-[9px] tracking-wider text-cream-dark uppercase font-semibold leading-none mt-1">
-                Stores & Purchase
+                Sales & Dispatch
               </p>
             </div>
           </div>
@@ -261,8 +261,8 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           </div>
         </div>
 
-        {/* Stores Category */}
-        { (isStore || isQC || role === "INDENTER") && (
+        {/* Stores Category (Hidden for Sales & Dispatch focus) */}
+        { false && (isStore || isQC || role === "INDENTER") && (
           <div>
             <h2 className="text-[10px] uppercase font-semibold text-cream-dark/40 tracking-wider mb-3 px-2">
               Stores & Inventory
@@ -387,8 +387,8 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           </div>
         )}
 
-        {/* Purchase Category */}
-        { (isPurchase || isAccounts) && (
+        {/* Purchase Category (Hidden for Sales & Dispatch focus) */}
+        { false && (isPurchase || isAccounts) && (
           <div>
             <h2 className="text-[10px] uppercase font-semibold text-cream-dark/40 tracking-wider mb-3 px-2">
               Purchase Module
@@ -508,6 +508,40 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               >
                 <TrendingUp size={18} />
                 <span>Purchase Reports</span>
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Masters */}
+        { isSales && (
+          <div>
+            <h2 className="text-[10px] uppercase font-semibold text-cream-dark/40 tracking-wider mb-3 px-2">
+              Masters
+            </h2>
+            <div className="space-y-1">
+              <Link
+                href="/stores/items"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/stores/items")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <Package size={18} />
+                <span>Product Master</span>
+              </Link>
+
+              <Link
+                href="/stores/departments"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/stores/departments")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <Database size={18} />
+                <span>Departments</span>
               </Link>
             </div>
           </div>
