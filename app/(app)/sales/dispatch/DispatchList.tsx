@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createDispatch, generateEWayBill, markDispatchDelivered } from "@/app/actions/dispatches";
 import { Plus, X, Truck, FileCheck2, PackageCheck } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 interface DispatchRow {
   id: string;
@@ -196,13 +197,12 @@ export default function DispatchList({
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-onyx/60 mb-1">Confirmed order *</label>
-                  <select className={inputCls} value={soId} onChange={(e) => pickOrder(e.target.value)}>
-                    <option value="">Select…</option>
-                    {openOrders.map((o) => (
-                      <option key={o.id} value={o.id}>{o.number} — {o.customer}</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    options={openOrders.map((o) => ({ value: o.id, label: `${o.number} — ${o.customer}` }))}
+                    value={soId}
+                    onChange={(val) => pickOrder(val)}
+                    placeholder="Select order..."
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Issue from store</label>

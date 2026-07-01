@@ -146,6 +146,8 @@ model Customer {
   stateCode       String? // GST state code (place-of-supply default)
   billingAddress  String?
   shippingAddress String?
+  billingAddresses  Json?
+  shippingAddresses Json?
   contactPerson   String?
   contactEmail    String?
   contactPhone    String?

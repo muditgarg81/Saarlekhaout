@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/salesInvoices";
 import { Plus, X, Receipt, QrCode, Ban } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
+import { SearchableSelect } from "@/components/SearchableSelect";
 
 interface Invoice {
   id: string;
@@ -169,13 +170,12 @@ export default function SalesInvoicesList({
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-onyx/60 mb-1">Dispatch *</label>
-                <select className={inputCls} value={dispatchId} onChange={(e) => setDispatchId(e.target.value)}>
-                  <option value="">Select a dispatch…</option>
-                  {eligibleDispatches.map((d) => (
-                    <option key={d.id} value={d.id}>{d.label}</option>
-                  ))}
-                </select>
+                <SearchableSelect
+                  options={eligibleDispatches.map((d) => ({ value: d.id, label: d.label }))}
+                  value={dispatchId}
+                  onChange={(val) => setDispatchId(val)}
+                  placeholder="Select a dispatch..."
+                />
                 {eligibleDispatches.length === 0 && (
                   <p className="text-[11px] text-onyx/40 mt-1">No un-invoiced dispatches. Dispatch an order first.</p>
                 )}

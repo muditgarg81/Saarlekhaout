@@ -11,6 +11,8 @@ import {
 } from "@/app/actions/salesOrders";
 import { Plus, X, Trash2, Send, Check, Ban, ClipboardList } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { SearchableItemSelect } from "@/components/SearchableItemSelect";
 
 interface Order {
   id: string;
@@ -210,13 +212,12 @@ export default function OrdersList({
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-xs font-semibold text-onyx/60 mb-1">Customer *</label>
-                  <select className={inputCls} value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
-                    <option value="">Select…</option>
-                    {customers.map((c) => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                    ))}
-                  </select>
+                  <SearchableSelect
+                    options={customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                    value={customerId}
+                    onChange={(val) => setCustomerId(val)}
+                    placeholder="Select Customer..."
+                  />
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Customer PO #</label>
@@ -245,12 +246,12 @@ export default function OrdersList({
                     {lines.map((l, i) => (
                       <tr key={i} className="border-t border-onyx/5">
                         <td className="px-2 py-1">
-                          <select className={cellCls} value={l.itemId} onChange={(e) => onItemPick(i, e.target.value)}>
-                            <option value="">Select…</option>
-                            {items.map((it) => (
-                              <option key={it.id} value={it.id}>{it.name} ({it.code})</option>
-                            ))}
-                          </select>
+                          <SearchableItemSelect
+                            items={items.map((it) => ({ id: it.id, code: it.code, name: it.name }))}
+                            value={l.itemId}
+                            onChange={(val) => onItemPick(i, val)}
+                            placeholder="Select Item..."
+                          />
                         </td>
                         <td className="px-2 py-1"><input type="number" className={cellCls} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} /></td>
                         <td className="px-2 py-1"><input type="number" className={cellCls} value={l.rate} onChange={(e) => setLine(i, { rate: Number(e.target.value) })} /></td>

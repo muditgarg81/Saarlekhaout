@@ -13,6 +13,8 @@ import {
 import { Plus, X, Trash2, Send, Check, Ban, FileText, ShoppingCart } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { QuotationStatus } from "@prisma/client";
+import { SearchableSelect } from "@/components/SearchableSelect";
+import { SearchableItemSelect } from "@/components/SearchableItemSelect";
 
 interface Quotation {
   id: string;
@@ -24,7 +26,7 @@ interface Quotation {
   value: number;
   lineCount: number;
 }
-interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null }
+interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null; billingAddresses?: any; shippingAddresses?: any; billingAddress?: string | null; shippingAddress?: string | null; }
 interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -63,6 +65,8 @@ export default function QuotationsList({
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [termsConditions, setTermsConditions] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
+  const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
+  const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
 
   const canCreate = can(user, "quotation.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "quotation.approve") || ["ADMIN", "OWNER"].includes(user.role);
@@ -87,6 +91,28 @@ export default function QuotationsList({
     if (cust) {
       setPaymentTerms(cust.paymentTerms || "");
       setPlaceOfSupply(cust.stateCode || "");
+      const bAddrs = cust.billingAddresses ? (typeof cust.billingAddresses === "string" ? JSON.parse(cust.billingAddresses) : cust.billingAddresses) : [];
+      const sAddrs = cust.shippingAddresses ? (typeof cust.shippingAddresses === "string" ? JSON.parse(cust.shippingAddresses) : cust.shippingAddresses) : [];
+      setBillingAddressOptions(bAddrs);
+      setShippingAddressOptions(sAddrs);
+      if (bAddrs.length > 0) {
+        setBillingAddress(bAddrs[0].address);
+        if (bAddrs[0].stateCode) {
+          setPlaceOfSupply(bAddrs[0].stateCode);
+        }
+      } else {
+        setBillingAddress(cust.billingAddress || "");
+      }
+      if (sAddrs.length > 0) {
+        setShippingAddress(sAddrs[0].address);
+      } else {
+        setShippingAddress(cust.shippingAddress || "");
+      }
+    } else {
+      setBillingAddressOptions([]);
+      setShippingAddressOptions([]);
+      setBillingAddress("");
+      setShippingAddress("");
     }
   };
 
@@ -243,18 +269,12 @@ export default function QuotationsList({
             <div className="grid grid-cols-2 gap-4 mb-6">
               <div>
                 <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Customer</label>
-                <select
+                <SearchableSelect
+                  options={customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                   value={customerId}
-                  onChange={(e) => handleCustomerPick(e.target.value)}
-                  className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
-                >
-                  <option value="">-- Select Customer --</option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.code})
-                    </option>
-                  ))}
-                </select>
+                  onChange={(val) => handleCustomerPick(val)}
+                  placeholder="Select Customer..."
+                />
               </div>
 
               <div>
@@ -291,6 +311,24 @@ export default function QuotationsList({
 
               <div className="col-span-2">
                 <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Billing Address</label>
+                {billingAddressOptions.length > 0 && (
+                  <select
+                    className="w-full text-xs px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron mb-2"
+                    onChange={(e) => {
+                      const selected = billingAddressOptions.find(o => o.id === e.target.value);
+                      if (selected) {
+                        setBillingAddress(selected.address);
+                        if (selected.stateCode) {
+                          setPlaceOfSupply(selected.stateCode);
+                        }
+                      }
+                    }}
+                  >
+                    {billingAddressOptions.map(opt => (
+                      <option key={opt.id} value={opt.id}>{opt.label}: {opt.address.slice(0, 40)}...</option>
+                    ))}
+                  </select>
+                )}
                 <textarea
                   value={billingAddress}
                   onChange={(e) => setBillingAddress(e.target.value)}
@@ -301,6 +339,21 @@ export default function QuotationsList({
 
               <div className="col-span-2">
                 <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Shipping Address</label>
+                {shippingAddressOptions.length > 0 && (
+                  <select
+                    className="w-full text-xs px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron mb-2"
+                    onChange={(e) => {
+                      const selected = shippingAddressOptions.find(o => o.id === e.target.value);
+                      if (selected) {
+                        setShippingAddress(selected.address);
+                      }
+                    }}
+                  >
+                    {shippingAddressOptions.map(opt => (
+                      <option key={opt.id} value={opt.id}>{opt.label}: {opt.address.slice(0, 40)}...</option>
+                    ))}
+                  </select>
+                )}
                 <textarea
                   value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
@@ -326,18 +379,12 @@ export default function QuotationsList({
                 {lines.map((l, idx) => (
                   <div key={idx} className="flex items-center gap-3 border border-onyx/5 p-3 rounded-lg bg-cream-light/10">
                     <div className="flex-1 min-w-[200px]">
-                      <select
+                      <SearchableItemSelect
+                        items={items.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
                         value={l.itemId}
-                        onChange={(e) => onItemPick(idx, e.target.value)}
-                        className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
-                      >
-                        <option value="">-- Pick Item --</option>
-                        {items.map((i) => (
-                          <option key={i.id} value={i.id}>
-                            {i.name} ({i.code})
-                          </option>
-                        ))}
-                      </select>
+                        onChange={(val) => onItemPick(idx, val)}
+                        placeholder="Pick Item"
+                      />
                     </div>
 
                     <div className="w-20">

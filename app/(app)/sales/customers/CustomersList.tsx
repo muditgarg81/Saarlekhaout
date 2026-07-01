@@ -31,6 +31,8 @@ interface Customer {
   stateCode: string | null;
   billingAddress: string | null;
   shippingAddress: string | null;
+  billingAddresses?: any;
+  shippingAddresses?: any;
   contactPerson: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
@@ -57,6 +59,8 @@ const EMPTY = {
   stateCode: "",
   billingAddress: "",
   shippingAddress: "",
+  billingAddresses: [] as { id: string; label: string; address: string; stateCode?: string }[],
+  shippingAddresses: [] as { id: string; label: string; address: string; stateCode?: string }[],
   contactPerson: "",
   contactEmail: "",
   contactPhone: "",
@@ -82,6 +86,54 @@ export default function CustomersList({
   const [form, setForm] = useState({ ...EMPTY });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const addBillingAddress = () => {
+    setForm((f) => ({
+      ...f,
+      billingAddresses: [
+        ...(f.billingAddresses || []),
+        { id: Math.random().toString(), label: "", address: "", stateCode: "" },
+      ],
+    }));
+  };
+
+  const removeBillingAddress = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      billingAddresses: (f.billingAddresses || []).filter((a) => a.id !== id),
+    }));
+  };
+
+  const updateBillingAddress = (id: string, patch: any) => {
+    setForm((f) => ({
+      ...f,
+      billingAddresses: (f.billingAddresses || []).map((a) => (a.id === id ? { ...a, ...patch } : a)),
+    }));
+  };
+
+  const addShippingAddress = () => {
+    setForm((f) => ({
+      ...f,
+      shippingAddresses: [
+        ...(f.shippingAddresses || []),
+        { id: Math.random().toString(), label: "", address: "", stateCode: "" },
+      ],
+    }));
+  };
+
+  const removeShippingAddress = (id: string) => {
+    setForm((f) => ({
+      ...f,
+      shippingAddresses: (f.shippingAddresses || []).filter((a) => a.id !== id),
+    }));
+  };
+
+  const updateShippingAddress = (id: string, patch: any) => {
+    setForm((f) => ({
+      ...f,
+      shippingAddresses: (f.shippingAddresses || []).map((a) => (a.id === id ? { ...a, ...patch } : a)),
+    }));
+  };
 
   const canApprove = can(user, "customer.approve") || ["ADMIN", "OWNER"].includes(user.role);
   const canManage = can(user, "customer.manage") || ["ADMIN", "OWNER"].includes(user.role);
@@ -117,6 +169,8 @@ export default function CustomersList({
       stateCode: c.stateCode || "",
       billingAddress: c.billingAddress || "",
       shippingAddress: c.shippingAddress || "",
+      billingAddresses: c.billingAddresses ? (typeof c.billingAddresses === "string" ? JSON.parse(c.billingAddresses) : c.billingAddresses) : [],
+      shippingAddresses: c.shippingAddresses ? (typeof c.shippingAddresses === "string" ? JSON.parse(c.shippingAddresses) : c.shippingAddresses) : [],
       contactPerson: c.contactPerson || "",
       contactEmail: c.contactEmail || "",
       contactPhone: c.contactPhone || "",
@@ -350,12 +404,121 @@ export default function CustomersList({
               <Field label="State code (POS)">
                 <input className={inputCls} value={form.stateCode} onChange={(e) => setForm({ ...form, stateCode: e.target.value })} />
               </Field>
-              <Field label="Billing address" full>
-                <textarea className={inputCls} rows={2} value={form.billingAddress} onChange={(e) => setForm({ ...form, billingAddress: e.target.value })} />
-              </Field>
-              <Field label="Shipping address" full>
-                <textarea className={inputCls} rows={2} value={form.shippingAddress} onChange={(e) => setForm({ ...form, shippingAddress: e.target.value })} />
-              </Field>
+              {/* Multiple Billing Addresses */}
+              <div className="col-span-full border border-onyx/5 rounded-xl p-4 bg-cream-light/10">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-bold text-onyx/70 uppercase tracking-wide">Billing Addresses</h3>
+                  <button
+                    type="button"
+                    onClick={addBillingAddress}
+                    className="text-xs font-semibold text-saffron hover:underline"
+                  >
+                    + Add Billing Address
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {(form.billingAddresses || []).map((addr: any) => (
+                    <div key={addr.id} className="flex gap-3 items-start border-b border-onyx/5 pb-3 last:border-0 last:pb-0">
+                      <div className="w-1/3">
+                        <label className="block text-[10px] text-onyx/50 mb-0.5">Label (e.g. Head Office)</label>
+                        <input
+                          className={inputCls}
+                          placeholder="Label"
+                          value={addr.label}
+                          onChange={(e) => updateBillingAddress(addr.id, { label: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[10px] text-onyx/50 mb-0.5">Address</label>
+                        <textarea
+                          className={inputCls}
+                          rows={1}
+                          placeholder="Full address"
+                          value={addr.address}
+                          onChange={(e) => updateBillingAddress(addr.id, { address: e.target.value })}
+                        />
+                      </div>
+                      <div className="w-20">
+                        <label className="block text-[10px] text-onyx/50 mb-0.5">State Code</label>
+                        <input
+                          className={inputCls}
+                          placeholder="e.g. 27"
+                          value={addr.stateCode || ""}
+                          onChange={(e) => updateBillingAddress(addr.id, { stateCode: e.target.value })}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeBillingAddress(addr.id)}
+                        className="text-red-500 hover:text-red-700 mt-5 p-1 rounded hover:bg-red-50"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {(form.billingAddresses || []).length === 0 && (
+                    <div className="text-xs text-onyx/40 text-center py-2">No billing addresses defined.</div>
+                  )}
+                </div>
+              </div>
+
+              {/* Multiple Shipping Addresses */}
+              <div className="col-span-full border border-onyx/5 rounded-xl p-4 bg-cream-light/10">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-bold text-onyx/70 uppercase tracking-wide">Shipping Addresses</h3>
+                  <button
+                    type="button"
+                    onClick={addShippingAddress}
+                    className="text-xs font-semibold text-saffron hover:underline"
+                  >
+                    + Add Shipping Address
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {(form.shippingAddresses || []).map((addr: any) => (
+                    <div key={addr.id} className="flex gap-3 items-start border-b border-onyx/5 pb-3 last:border-0 last:pb-0">
+                      <div className="w-1/3">
+                        <label className="block text-[10px] text-onyx/50 mb-0.5">Label (e.g. Warehouse Pune)</label>
+                        <input
+                          className={inputCls}
+                          placeholder="Label"
+                          value={addr.label}
+                          onChange={(e) => updateShippingAddress(addr.id, { label: e.target.value })}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <label className="block text-[10px] text-onyx/50 mb-0.5">Address</label>
+                        <textarea
+                          className={inputCls}
+                          rows={1}
+                          placeholder="Full address"
+                          value={addr.address}
+                          onChange={(e) => updateShippingAddress(addr.id, { address: e.target.value })}
+                        />
+                      </div>
+                      <div className="w-20">
+                        <label className="block text-[10px] text-onyx/50 mb-0.5">State Code</label>
+                        <input
+                          className={inputCls}
+                          placeholder="e.g. 27"
+                          value={addr.stateCode || ""}
+                          onChange={(e) => updateShippingAddress(addr.id, { stateCode: e.target.value })}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeShippingAddress(addr.id)}
+                        className="text-red-500 hover:text-red-700 mt-5 p-1 rounded hover:bg-red-50"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ))}
+                  {(form.shippingAddresses || []).length === 0 && (
+                    <div className="text-xs text-onyx/40 text-center py-2">No shipping addresses defined.</div>
+                  )}
+                </div>
+              </div>
               <Field label="Contact person">
                 <input className={inputCls} value={form.contactPerson} onChange={(e) => setForm({ ...form, contactPerson: e.target.value })} />
               </Field>
