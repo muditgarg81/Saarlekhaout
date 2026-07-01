@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { ReceiptMode, SalesInvoiceStatus } from "@prisma/client";
 import { getNextSequence } from "@/lib/sequences";
+import { can } from "@/lib/rbac";
 
 // Receipt Voucher — the collections mirror of the Payment Voucher. Records money
 // received against a customer / invoice. Like payments, it is RECORDED, never
@@ -46,6 +47,9 @@ async function logAudit(
 export async function recordReceipt(data: z.infer<typeof receiptSchema>) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "receipt.record")) {
+    return { success: false, error: "Forbidden: Missing receipt.record permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 

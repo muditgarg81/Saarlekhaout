@@ -15,8 +15,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Saarlekha — Stores & Purchase",
-  description: "The materials backbone and purchase engine for Indian factories, providing Multi-store Inventory, Purchase, and Outbound ERP Integration.",
+  title: "Saarlekha — Sales & Dispatch",
+  description: "Order-to-cash for Indian businesses: customer orders, dispatch with GST e-way bills, tax invoices with e-invoice (IRN), receipts, and debtor Tally integration.",
 };
 
 export default function RootLayout({

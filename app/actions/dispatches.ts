@@ -7,6 +7,7 @@ import { z } from "zod";
 import { DispatchStatus, EWayBillStatus, SoStatus, SoLineStatus, LedgerTxnType } from "@prisma/client";
 import { getNextSequence } from "@/lib/sequences";
 import { postLedgerEntry } from "@/lib/stock";
+import { can } from "@/lib/rbac";
 
 // Dispatch / Delivery Challan — the outward mirror of the GRN. Issues stock from
 // a store against a confirmed Sales Order, rolls up line + order fulfilment, and
@@ -66,6 +67,9 @@ function rollupSoLineStatus(qty: number, dispatchedQty: number): SoLineStatus {
 export async function createDispatch(data: z.infer<typeof dispatchSchema>) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "dispatch.create")) {
+    return { success: false, error: "Forbidden: Missing dispatch.create permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
@@ -202,6 +206,9 @@ export async function createDispatch(data: z.infer<typeof dispatchSchema>) {
 export async function generateEWayBill(dispatchId: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "ewaybill.generate")) {
+    return { success: false, error: "Forbidden: Missing ewaybill.generate permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
@@ -293,6 +300,9 @@ export async function generateEWayBill(dispatchId: string) {
 export async function markDispatchDelivered(dispatchId: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "dispatch.create")) {
+    return { success: false, error: "Forbidden: Missing dispatch.create permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 

@@ -7,6 +7,7 @@ import { z } from "zod";
 import { createHash, randomBytes } from "crypto";
 import { EInvoiceStatus, SalesInvoiceStatus, SoStatus, SoLineStatus } from "@prisma/client";
 import { getNextSequence } from "@/lib/sequences";
+import { can } from "@/lib/rbac";
 
 // Sales Invoice — the mirror of the Supplier Invoice. Raised against a dispatch
 // (or directly against an order), it computes the GST split (CGST+SGST for
@@ -53,6 +54,9 @@ function indianFY(d: Date): string {
 export async function createSalesInvoiceFromDispatch(data: z.infer<typeof invoiceSchema>) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "sales.invoice")) {
+    return { success: false, error: "Forbidden: Missing sales.invoice permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
@@ -193,6 +197,9 @@ export async function createSalesInvoiceFromDispatch(data: z.infer<typeof invoic
 export async function generateEInvoice(invoiceId: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "einvoice.generate")) {
+    return { success: false, error: "Forbidden: Missing einvoice.generate permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
@@ -292,6 +299,9 @@ export async function generateEInvoice(invoiceId: string) {
 export async function cancelSalesInvoice(invoiceId: string, reason: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "sales.invoice")) {
+    return { success: false, error: "Forbidden: Missing sales.invoice permission" };
+  }
   const companyId = (session.user as any).companyId;
   const actorId = (session.user as any).id;
 
