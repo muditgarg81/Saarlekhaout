@@ -151,10 +151,13 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
   const isSales = can(user, "customer.manage") ||
                   can(user, "so.create") ||
                   can(user, "so.approve") ||
-                  can(user, "dispatch.create") ||
                   can(user, "sales.invoice") ||
                   can(user, "receipt.record") ||
-                  ["PURCHASE_MANAGER", "PURCHASE_OFFICER", "STORE_MANAGER", "STORE_KEEPER", "ACCOUNTS", "ADMIN", "OWNER"].includes(role);
+                  ["PURCHASE_MANAGER", "PURCHASE_OFFICER", "ACCOUNTS", "ADMIN", "OWNER"].includes(role);
+
+  const isDispatch = can(user, "dispatch.create") ||
+                     can(user, "ewaybill.generate") ||
+                     ["STORE_MANAGER", "STORE_KEEPER", "ADMIN", "OWNER"].includes(role);
 
   return (
     <>
@@ -547,11 +550,11 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
           </div>
         )}
 
-        {/* Sales & Dispatch Category */}
+        {/* Sales Module Category */}
         { isSales && (
           <div>
             <h2 className="text-[10px] uppercase font-semibold text-cream-dark/40 tracking-wider mb-3 px-2">
-              Sales & Dispatch
+              Sales
             </h2>
             <div className="space-y-1">
               <Link
@@ -589,20 +592,6 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 <ClipboardList size={18} />
                 <span>Sales Orders</span>
               </Link>
-
-              {(can(user, "dispatch.create") || ["ADMIN", "OWNER", "STORE_MANAGER", "STORE_KEEPER"].includes(role)) && (
-                <Link
-                  href="/sales/dispatch"
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                    isActive("/sales/dispatch")
-                      ? "bg-saffron text-onyx font-semibold shadow-md"
-                      : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
-                  }`}
-                >
-                  <PackageOpen size={18} />
-                  <span>Dispatch & Delivery</span>
-                </Link>
-              )}
 
               {(can(user, "sales.invoice") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(role)) && (
                 <Link
@@ -655,6 +644,30 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 <TrendingUp size={18} />
                 <span>Receivables Reports</span>
               </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Dispatch Module Category */}
+        { isDispatch && (
+          <div>
+            <h2 className="text-[10px] uppercase font-semibold text-cream-dark/40 tracking-wider mb-3 px-2">
+              Dispatch
+            </h2>
+            <div className="space-y-1">
+              {(can(user, "dispatch.create") || ["ADMIN", "OWNER", "STORE_MANAGER", "STORE_KEEPER"].includes(role)) && (
+                <Link
+                  href="/sales/dispatch"
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                    isActive("/sales/dispatch")
+                      ? "bg-saffron text-onyx font-semibold shadow-md"
+                      : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                  }`}
+                >
+                  <PackageOpen size={18} />
+                  <span>Dispatch & Delivery</span>
+                </Link>
+              )}
             </div>
           </div>
         )}
