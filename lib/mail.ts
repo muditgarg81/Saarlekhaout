@@ -92,3 +92,87 @@ export async function sendInvitationEmail(data: {
     return { success: false, error, link: invitationLink };
   }
 }
+
+export async function sendPaymentReminderEmail(data: {
+  email: string;
+  customerName: string;
+  invoiceNo: string;
+  amount: number;
+  dueDate: Date;
+  companyName: string;
+}) {
+  const { email, customerName, invoiceNo, amount, dueDate, companyName } = data;
+  const formattedAmount = amount.toLocaleString("en-IN", { style: "currency", currency: "INR" });
+  const formattedDueDate = dueDate.toLocaleDateString("en-IN");
+
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FAF6F0; padding: 40px 20px; text-align: center;">
+      <div style="max-width: 500px; margin: 0 auto; background: #FFFFFF; border: 1px solid #13131310; border-radius: 16px; padding: 40px; box-shadow: 0 4px 20px rgba(19, 19, 19, 0.05); text-align: left;">
+        <h2 style="font-family: Georgia, serif; font-size: 24px; font-weight: bold; color: #131313; margin-top: 0;">${companyName}</h2>
+        <p style="font-size: 14px; color: #13131380; font-family: monospace; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 24px;">Payment Reminder</p>
+        
+        <p style="font-size: 15px; color: #131313; line-height: 1.6; margin-bottom: 20px;">
+          Dear <strong>${customerName}</strong>,
+        </p>
+        
+        <p style="font-size: 14px; color: #13131380; line-height: 1.6; margin-bottom: 20px;">
+          This is a friendly reminder that payment for Invoice <strong>${invoiceNo}</strong> of <strong>${formattedAmount}</strong> was due on <strong>${formattedDueDate}</strong> and remains outstanding.
+        </p>
+        
+        <p style="font-size: 14px; color: #13131380; line-height: 1.6; margin-bottom: 30px;">
+          Please arrange for the payment at your earliest convenience. If you have already made the payment, please ignore this email.
+        </p>
+      </div>
+      <p style="font-size: 11px; color: #13131340; margin-top: 20px; text-align: center;">
+        Sent via Saarlekha Sales & Dispatch portal.
+      </p>
+    </div>
+  `;
+
+  const textContent = `
+    Dear ${customerName},
+    
+    This is a friendly reminder that payment for Invoice ${invoiceNo} of ${formattedAmount} was due on ${formattedDueDate} and remains outstanding.
+    
+    Please arrange for the payment at your earliest convenience.
+    
+    Best regards,
+    ${companyName}
+  `;
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    console.log("----------------------------------------");
+    console.log(`[MOCK EMAIL DISPATCH] Payment Reminder To: ${email}`);
+    console.log(`Subject: Payment Reminder: Invoice ${invoiceNo} - ${companyName}`);
+    console.log(`Body: ${textContent}`);
+    console.log("----------------------------------------");
+    return { success: true, mock: true };
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: {
+        user: smtpUser,
+        pass: smtpPass,
+      },
+    });
+
+    await transporter.sendMail({
+      from: smtpFrom,
+      to: email,
+      subject: `Payment Reminder: Invoice ${invoiceNo} - ${companyName}`,
+      text: textContent,
+      html: htmlContent,
+    });
+
+    console.log(`[EMAIL DISPATCH] Payment reminder email successfully sent to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send payment reminder email via SMTP:", error);
+    return { success: false, error };
+  }
+}
+

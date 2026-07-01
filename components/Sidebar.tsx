@@ -567,6 +567,18 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               </Link>
 
               <Link
+                href="/sales/quotations"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/sales/quotations")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <FileText size={18} />
+                <span>Customer Quotations</span>
+              </Link>
+
+              <Link
                 href="/sales/orders"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                   isActive("/sales/orders")
@@ -619,6 +631,18 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   <span>Customer Receipts</span>
                 </Link>
               )}
+
+              <Link
+                href="/sales/reminders"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/sales/reminders")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <AlertTriangle size={18} />
+                <span>Payment Reminders</span>
+              </Link>
 
               <Link
                 href="/sales/reports"

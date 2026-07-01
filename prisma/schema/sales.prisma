@@ -160,6 +160,8 @@ model Customer {
   company         Company        @relation(fields: [companyId], references: [id])
 
   salesOrders SalesOrder[]
+  quotations  CustomerQuotation[]
+  paymentReminders PaymentReminder[]
 
   @@unique([companyId, code])
   @@index([companyId, status])
@@ -194,6 +196,8 @@ model SalesOrder {
   lines      SoLine[]
   dispatches Dispatch[]
   invoices   SalesInvoice[]
+  quotationId String?
+  quotation   CustomerQuotation? @relation(fields: [quotationId], references: [id])
 
   @@unique([companyId, number])
   @@index([companyId, status])
@@ -294,12 +298,15 @@ model SalesInvoice {
   einvoiceStatus EInvoiceStatus     @default(NOT_APPLICABLE)
   einvoiceData   Json? // generated IRP payload + response
   deletedAt      DateTime?
+  reminderCount Int @default(0)
+  lastReminderSentAt DateTime?
   createdById    String
   createdAt      DateTime           @default(now())
 
   so       SalesOrder?        @relation(fields: [soId], references: [id])
   dispatch Dispatch?          @relation(fields: [dispatchId], references: [id])
   lines    SalesInvoiceLine[]
+  paymentReminders PaymentReminder[]
 
   @@unique([companyId, number])
   @@index([companyId, status])
@@ -427,3 +434,76 @@ model SalesFlowConversion {
   @@unique([companyId, idempotencyKey])
   @@schema("sales")
 }
+
+enum QuotationStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SENT
+  ACCEPTED
+  REJECTED
+  EXPIRED
+  CANCELLED
+
+  @@schema("sales")
+}
+
+model CustomerQuotation {
+  id              String           @id @default(cuid())
+  companyId       String
+  number          String           // QT-XXXXX
+  customerId      String
+  status          QuotationStatus  @default(DRAFT)
+  validUpto       DateTime?
+  quotationDate   DateTime         @default(now())
+  currency        String           @default("INR")
+  paymentTerms    String?
+  billingAddress  String?
+  shippingAddress String?
+  placeOfSupply   String?
+  termsConditions String?
+  otherCharges    Float            @default(0)
+  version         Int              @default(1)
+  approvedById    String?
+  approvedAt      DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime         @default(now())
+  company         Company          @relation(fields: [companyId], references: [id])
+  customer        Customer         @relation(fields: [customerId], references: [id])
+  lines           CustomerQuotationLine[]
+  salesOrders     SalesOrder[]
+
+  @@unique([companyId, number])
+  @@index([companyId, status])
+  @@schema("sales")
+}
+
+model CustomerQuotationLine {
+  id          String            @id @default(cuid())
+  quotationId String
+  itemId      String
+  qty         Float
+  rate        Float
+  discount    Float             @default(0) // %
+  gstRate     Float             @default(0) // %
+  quotation   CustomerQuotation @relation(fields: [quotationId], references: [id])
+
+  @@schema("sales")
+}
+
+model PaymentReminder {
+  id          String   @id @default(cuid())
+  companyId   String
+  invoiceId   String
+  customerId  String
+  sentAt      DateTime @default(now())
+  sentTo      String
+  status      String   // SENT | FAILED
+  method      String   // EMAIL | IN_APP
+
+  invoice     SalesInvoice @relation(fields: [invoiceId], references: [id])
+  customer    Customer     @relation(fields: [customerId], references: [id])
+
+  @@index([companyId, invoiceId])
+  @@schema("sales")
+}
+
