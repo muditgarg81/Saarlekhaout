@@ -157,7 +157,8 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
 
   const isDispatch = can(user, "dispatch.create") ||
                      can(user, "ewaybill.generate") ||
-                     ["STORE_MANAGER", "STORE_KEEPER", "ADMIN", "OWNER"].includes(role);
+                     can(user, "sales.invoice") ||
+                     ["STORE_MANAGER", "STORE_KEEPER", "ACCOUNTS", "ADMIN", "OWNER"].includes(role);
 
   return (
     <>
@@ -546,17 +547,7 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 <Database size={18} />
                 <span>Departments</span>
               </Link>
-            </div>
-          </div>
-        )}
 
-        {/* Sales Module Category */}
-        { isSales && (
-          <div>
-            <h2 className="text-[10px] uppercase font-semibold text-cream-dark/40 tracking-wider mb-3 px-2">
-              Sales
-            </h2>
-            <div className="space-y-1">
               <Link
                 href="/sales/customers"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
@@ -568,7 +559,17 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 <Users size={18} />
                 <span>Customer Master</span>
               </Link>
+            </div>
+          </div>
+        )}
 
+        {/* Sales Module Category */}
+        { isSales && (
+          <div>
+            <h2 className="text-[10px] uppercase font-semibold text-cream-dark/40 tracking-wider mb-3 px-2">
+              Sales
+            </h2>
+            <div className="space-y-1">
               <Link
                 href="/sales/quotations"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
@@ -592,20 +593,6 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 <ClipboardList size={18} />
                 <span>Sales Orders</span>
               </Link>
-
-              {(can(user, "sales.invoice") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(role)) && (
-                <Link
-                  href="/sales/invoices"
-                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
-                    isActive("/sales/invoices")
-                      ? "bg-saffron text-onyx font-semibold shadow-md"
-                      : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
-                  }`}
-                >
-                  <QrCode size={18} />
-                  <span>Invoices & E-Invoice</span>
-                </Link>
-              )}
 
               {(can(user, "receipt.record") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(role)) && (
                 <Link
@@ -666,6 +653,20 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 >
                   <PackageOpen size={18} />
                   <span>Dispatch & Delivery</span>
+                </Link>
+              )}
+
+              {(can(user, "sales.invoice") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(role)) && (
+                <Link
+                  href="/sales/invoices"
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                    isActive("/sales/invoices")
+                      ? "bg-saffron text-onyx font-semibold shadow-md"
+                      : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                  }`}
+                >
+                  <QrCode size={18} />
+                  <span>Invoices & E-Invoice</span>
                 </Link>
               )}
             </div>
