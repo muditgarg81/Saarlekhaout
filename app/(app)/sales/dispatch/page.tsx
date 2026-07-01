@@ -8,11 +8,11 @@ export default async function DispatchPage() {
   if (!user) redirect("/auth/signin");
   const companyId = user.companyId;
 
-  const [dispatches, openOrders, stores, items, customers] = await Promise.all([
+  const [dispatches, openOrders, stores, items, customers, packingLists] = await Promise.all([
     db.dispatch.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      include: { lines: true, so: { select: { number: true } } },
+      include: { lines: true, so: { select: { number: true } }, packingList: { select: { number: true } } },
       take: 200,
     }),
     db.salesOrder.findMany({
@@ -23,6 +23,7 @@ export default async function DispatchPage() {
     db.store.findMany({ where: { companyId }, select: { id: true, code: true, name: true }, orderBy: { name: "asc" } }),
     db.item.findMany({ where: { companyId, deletedAt: null }, select: { id: true, code: true, name: true } }),
     db.customer.findMany({ where: { companyId }, select: { id: true, name: true } }),
+    db.packingList.findMany({ where: { companyId, deletedAt: null }, select: { id: true, number: true, soId: true } }),
   ]);
 
   const itemName = new Map(items.map((i) => [i.id, `${i.name} (${i.code})`]));
@@ -39,6 +40,7 @@ export default async function DispatchPage() {
     ewayBillNo: d.ewayBillNo,
     ewayBillStatus: d.ewayBillStatus,
     lineCount: d.lines.length,
+    packingListNumber: d.packingList?.number || null,
   }));
 
   const mappedOrders = openOrders.map((o) => ({
@@ -61,6 +63,7 @@ export default async function DispatchPage() {
       initialDispatches={mappedDispatches}
       openOrders={mappedOrders}
       stores={stores}
+      packingLists={packingLists}
       user={user as any}
     />
   );

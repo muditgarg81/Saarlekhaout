@@ -31,6 +31,7 @@ const dispatchSchema = z.object({
   lrNo: z.string().optional().nullable(),
   distanceKm: z.number().int().nonnegative().optional().nullable(),
   lines: z.array(dispatchLineSchema).min(1, "Add at least one line"),
+  packingListId: z.string().optional().nullable(),
 });
 
 const EWAY_THRESHOLD = 50000; // ₹ consignment value above which an e-way bill is mandatory
@@ -130,6 +131,7 @@ export async function createDispatch(data: z.infer<typeof dispatchSchema>) {
           transporterGstin: validated.transporterGstin || null,
           lrNo: validated.lrNo || null,
           distanceKm: validated.distanceKm ?? null,
+          packingListId: validated.packingListId || null,
           createdById: actorId,
           lines: {
             create: validated.lines.map((l) => ({

@@ -14,7 +14,7 @@ export async function getNextSequence(
     | "IND" | "PR" | "RFQ" | "PO" | "GRN" | "ISS" | "MRN" | "GP" | "INSP" | "DN" | "CN" | "PAY" | "PRQ"
     // Sales & Dispatch (order-to-cash): Sales Order, Delivery Challan/Dispatch,
     // Sales Invoice, Receipt Voucher, Sales Credit/Debit Note, Quotation.
-    | "SO" | "DC" | "SI" | "RV" | "SCN" | "SDN" | "QT"
+    | "SO" | "DC" | "SI" | "RV" | "SCN" | "SDN" | "QT" | "PK"
 ): Promise<string> {
   return await db.$transaction(async (tx) => {
     const sequence = await tx.docSequence.upsert({

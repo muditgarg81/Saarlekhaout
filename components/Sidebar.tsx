@@ -26,7 +26,8 @@ import {
   PackageOpen,
   QrCode,
   ChevronDown,
-  X
+  X,
+  Boxes
 } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 import { can, SessionUser } from "@/lib/rbac";
@@ -655,6 +656,18 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   <span>Dispatch & Delivery</span>
                 </Link>
               )}
+
+              <Link
+                href="/sales/packing-list"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/sales/packing-list")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <Boxes size={18} />
+                <span>Packing List</span>
+              </Link>
 
               {(can(user, "sales.invoice") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(role)) && (
                 <Link

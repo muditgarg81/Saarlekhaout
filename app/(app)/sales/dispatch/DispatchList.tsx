@@ -18,10 +18,12 @@ interface DispatchRow {
   ewayBillNo: string | null;
   ewayBillStatus: string;
   lineCount: number;
+  packingListNumber: string | null;
 }
 interface OpenLine { soLineId: string; itemId: string; itemName: string; open: number; rate: number }
 interface OpenOrder { id: string; number: string; customer: string; lines: OpenLine[] }
 interface StoreOpt { id: string; code: string; name: string }
+interface PackingListOpt { id: string; number: string; soId: string | null }
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-700 border-gray-200",
@@ -43,11 +45,13 @@ export default function DispatchList({
   initialDispatches,
   openOrders,
   stores,
+  packingLists,
   user,
 }: {
   initialDispatches: DispatchRow[];
   openOrders: OpenOrder[];
   stores: StoreOpt[];
+  packingLists: PackingListOpt[];
   user: SessionUser;
 }) {
   const router = useRouter();
@@ -62,6 +66,7 @@ export default function DispatchList({
   const [transporterName, setTransporterName] = useState("");
   const [lrNo, setLrNo] = useState("");
   const [distanceKm, setDistanceKm] = useState<number>(0);
+  const [packingListId, setPackingListId] = useState("");
   const [qtys, setQtys] = useState<Record<string, number>>({});
 
   const canDispatch = can(user, "dispatch.create") || ["ADMIN", "OWNER"].includes(user.role);
@@ -71,6 +76,7 @@ export default function DispatchList({
 
   const pickOrder = (id: string) => {
     setSoId(id);
+    setPackingListId("");
     const o = openOrders.find((x) => x.id === id);
     const init: Record<string, number> = {};
     o?.lines.forEach((l) => (init[l.soLineId] = l.open));
@@ -96,6 +102,7 @@ export default function DispatchList({
       transporterName: transporterName || null,
       lrNo: lrNo || null,
       distanceKm: distanceKm || null,
+      packingListId: packingListId || null,
       lines,
     } as any);
     setLoading(false);
@@ -105,6 +112,7 @@ export default function DispatchList({
     }
     setIsOpen(false);
     setSoId("");
+    setPackingListId("");
     setQtys({});
     router.refresh();
   };
@@ -141,6 +149,7 @@ export default function DispatchList({
               <th className="text-left px-4 py-3 font-semibold">DC #</th>
               <th className="text-left px-4 py-3 font-semibold">Order</th>
               <th className="text-left px-4 py-3 font-semibold">Customer</th>
+              <th className="text-left px-4 py-3 font-semibold">Packing List</th>
               <th className="text-left px-4 py-3 font-semibold">Vehicle</th>
               <th className="text-left px-4 py-3 font-semibold">E-way Bill</th>
               <th className="text-left px-4 py-3 font-semibold">Status</th>
@@ -153,6 +162,7 @@ export default function DispatchList({
                 <td className="px-4 py-3 font-mono text-xs text-onyx/70">{d.number}</td>
                 <td className="px-4 py-3 text-onyx/70 text-xs">{d.soNumber || "—"}</td>
                 <td className="px-4 py-3 text-onyx">{d.customer}</td>
+                <td className="px-4 py-3 font-mono text-xs text-onyx/60">{d.packingListNumber || "—"}</td>
                 <td className="px-4 py-3 text-onyx/60 text-xs">{d.vehicleNo || "—"}</td>
                 <td className="px-4 py-3 text-xs">
                   <span className={EWAY_STYLES[d.ewayBillStatus]}>
@@ -181,7 +191,7 @@ export default function DispatchList({
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-12 text-center text-onyx/40 text-sm">No dispatches yet.</td></tr>
+              <tr><td colSpan={8} className="px-4 py-12 text-center text-onyx/40 text-sm">No dispatches yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -214,6 +224,18 @@ export default function DispatchList({
                   </select>
                 </div>
               </div>
+
+              {soId && (
+                <div>
+                  <label className="block text-xs font-semibold text-onyx/60 mb-1">Link Packing List (Supporting Document)</label>
+                  <select className={inputCls} value={packingListId} onChange={(e) => setPackingListId(e.target.value)}>
+                    <option value="">-- No Packing List --</option>
+                    {packingLists.filter(p => p.soId === soId).map((p) => (
+                      <option key={p.id} value={p.id}>{p.number}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {order && (
                 <div className="border border-onyx/10 rounded-lg overflow-hidden">

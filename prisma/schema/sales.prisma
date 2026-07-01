@@ -164,6 +164,7 @@ model Customer {
   salesOrders SalesOrder[]
   quotations  CustomerQuotation[]
   paymentReminders PaymentReminder[]
+  packingLists PackingList[]
 
   @@unique([companyId, code])
   @@index([companyId, status])
@@ -197,6 +198,7 @@ model SalesOrder {
   customer   Customer       @relation(fields: [customerId], references: [id])
   lines      SoLine[]
   dispatches Dispatch[]
+  packingLists PackingList[]
   invoices   SalesInvoice[]
   quotationId String?
   quotation   CustomerQuotation? @relation(fields: [quotationId], references: [id])
@@ -252,6 +254,8 @@ model Dispatch {
   so       SalesOrder?    @relation(fields: [soId], references: [id])
   lines    DispatchLine[]
   invoices SalesInvoice[]
+  packingListId String?
+  packingList   PackingList?  @relation(fields: [packingListId], references: [id])
 
   @@unique([companyId, number])
   @@index([companyId, status])
@@ -506,6 +510,40 @@ model PaymentReminder {
   customer    Customer     @relation(fields: [customerId], references: [id])
 
   @@index([companyId, invoiceId])
+  @@schema("sales")
+}
+
+model PackingList {
+  id          String            @id @default(cuid())
+  companyId   String
+  number      String            // PK-XXXXX
+  soId        String?
+  customerId  String
+  status      String            @default("DRAFT") // DRAFT | COMPLETED
+  createdAt   DateTime          @default(now())
+  deletedAt   DateTime?
+
+  so          SalesOrder?       @relation(fields: [soId], references: [id])
+  customer    Customer          @relation(fields: [customerId], references: [id])
+  lines       PackingListLine[]
+  dispatches  Dispatch[]
+
+  @@unique([companyId, number])
+  @@index([companyId, customerId])
+  @@schema("sales")
+}
+
+model PackingListLine {
+  id            String      @id @default(cuid())
+  packingListId String
+  boxNo         String      // Box / Carton Number, e.g. "Box 1"
+  itemId        String
+  qty           Float
+  grossWeight   Float?      // kg
+  netWeight     Float?      // kg
+  dimensions    String?     // e.g. 12x12x12
+  packingList   PackingList @relation(fields: [packingListId], references: [id])
+
   @@schema("sales")
 }
 
