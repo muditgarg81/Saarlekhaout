@@ -52,6 +52,7 @@ export default async function QuotationsPage() {
     shippingAddress: q.shippingAddress,
     placeOfSupply: q.placeOfSupply,
     termsConditions: q.termsConditions,
+    leadTime: q.leadTime,
     otherCharges: q.otherCharges,
     lines: q.lines.map((l) => ({
       id: l.id,

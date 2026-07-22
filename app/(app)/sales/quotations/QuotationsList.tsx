@@ -33,6 +33,7 @@ interface Quotation {
   shippingAddress?: string | null;
   placeOfSupply?: string | null;
   termsConditions?: string | null;
+  leadTime?: string | null;
   otherCharges?: number;
   lines?: any[];
   lineCount: number;
@@ -84,6 +85,7 @@ export default function QuotationsList({
   const [shippingAddress, setShippingAddress] = useState("");
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [termsConditions, setTermsConditions] = useState(presetTerms || "");
+  const [leadTime, setLeadTime] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
@@ -214,6 +216,7 @@ export default function QuotationsList({
       shippingAddress: shippingAddress || null,
       placeOfSupply: placeOfSupply || null,
       termsConditions: termsConditions || null,
+      leadTime: leadTime || null,
       otherCharges: 0,
       lines: lines
         .filter((l) => l.itemId)
@@ -238,6 +241,7 @@ export default function QuotationsList({
     setShippingAddress("");
     setPlaceOfSupply("");
     setTermsConditions(presetTerms || "");
+    setLeadTime("");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
@@ -396,6 +400,17 @@ export default function QuotationsList({
                   placeholder="e.g. 27"
                   value={placeOfSupply}
                   onChange={(e) => setPlaceOfSupply(e.target.value)}
+                  className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Lead Time / Delivery Period</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 2-3 Weeks"
+                  value={leadTime}
+                  onChange={(e) => setLeadTime(e.target.value)}
                   className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
                 />
               </div>
@@ -639,8 +654,8 @@ export default function QuotationsList({
             </div>
 
             {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
-              <div>
+            <div className="grid grid-cols-3 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
+              <div className="col-span-2">
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer</span>
                 <span className="font-semibold text-onyx text-sm">{reviewQuotation.customer}</span>
               </div>
@@ -656,7 +671,11 @@ export default function QuotationsList({
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Place of Supply</span>
                 <span className="font-medium text-onyx">{reviewQuotation.placeOfSupply || "—"}</span>
               </div>
-              <div className="col-span-2 grid grid-cols-2 gap-4 pt-3 border-t border-onyx/5">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Lead Time</span>
+                <span className="font-medium text-onyx">{reviewQuotation.leadTime || "—"}</span>
+              </div>
+              <div className="col-span-3 grid grid-cols-2 gap-4 pt-3 border-t border-onyx/5">
                 <div>
                   <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Billing Address</span>
                   <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{reviewQuotation.billingAddress || "—"}</p>
@@ -730,7 +749,7 @@ export default function QuotationsList({
               </div>
               <div className="flex gap-2 justify-end">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const linesWithNames = reviewQuotation.lines?.map((l: any) => {
                       const item = itemById.get(l.itemId);
                       return {
@@ -738,7 +757,7 @@ export default function QuotationsList({
                         itemName: item ? `${item.name} (${item.code})` : "Unknown Item"
                       };
                     });
-                    generatePDF("Quotation", { ...reviewQuotation, lines: linesWithNames }, company);
+                    await generatePDF("Quotation", { ...reviewQuotation, lines: linesWithNames }, company);
                   }}
                   className="px-4 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm"
                 >

@@ -1,28 +1,86 @@
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
-export function generatePDF(docType: "Quotation" | "Sales Order", data: any, company: any) {
+function loadImage(url: string): Promise<HTMLImageElement | null> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = url;
+  });
+}
+
+export function numberToWords(num: number): string {
+  if (num === 0) return "Zero";
+  
+  const single = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+  const double = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
+  
+  const formatWords = (n: number): string => {
+    if (n < 20) return single[n];
+    const digit = n % 10;
+    if (n < 100) return double[Math.floor(n / 10)] + (digit ? " " + single[digit] : "");
+    const hundred = Math.floor(n / 100);
+    const rest = n % 100;
+    return single[hundred] + " Hundred" + (rest ? " and " + formatWords(rest) : "");
+  };
+
+  const convert = (n: number): string => {
+    n = Math.floor(n);
+    if (n < 100) return formatWords(n);
+    if (n < 1000) return formatWords(n);
+    
+    const thousand = Math.floor(n / 1000) % 100;
+    const lakh = Math.floor(n / 100000) % 100;
+    const crore = Math.floor(n / 10000000);
+    const hundredRange = n % 1000;
+    
+    let parts: string[] = [];
+    if (crore > 0) parts.push(convert(crore) + " Crore");
+    if (lakh > 0) parts.push(formatWords(lakh) + " Lakh");
+    if (thousand > 0) parts.push(formatWords(thousand) + " Thousand");
+    if (hundredRange > 0) parts.push(formatWords(hundredRange));
+    
+    return parts.join(", ");
+  };
+
+  const words = convert(num);
+  return words ? words + " Rupees Only" : "";
+}
+
+export async function generatePDF(docType: "Quotation" | "Sales Order", data: any, company: any) {
   const doc = new jsPDF();
   
-  // Page boundaries: Width: 210, Height: 297 (A4)
+  let startX = 14;
+  if (company?.logoUrl) {
+    const fullLogoUrl = window.location.origin + company.logoUrl;
+    const img = await loadImage(fullLogoUrl);
+    if (img) {
+      doc.addImage(img, "JPEG", 14, 15, 32, 16);
+      startX = 50; 
+    }
+  }
   
   // 1. Company Header (Seller details)
   doc.setFont("helvetica", "bold");
-  doc.setFontSize(14);
+  doc.setFontSize(13);
   doc.setTextColor(33, 33, 33);
-  doc.text(company?.name || "Crox Oil & Gas Pvt. Ltd.", 14, 20);
+  doc.text(company?.name || "Crox Oil & Gas Pvt. Ltd.", startX, 20);
   
   doc.setFont("helvetica", "normal");
-  doc.setFontSize(8.5);
+  doc.setFontSize(8);
   doc.setTextColor(80, 80, 80);
-  doc.text(company?.address || "Address not configured.", 14, 25, { maxWidth: 110 });
-  doc.text(`GSTIN: ${company?.gstin || "N/A"} | PAN: ${company?.pan || "N/A"}`, 14, 35);
-  doc.text(`Email: ${company?.contactEmail || "N/A"} | Phone: ${company?.contactPhone || "N/A"}`, 14, 39);
+  doc.text(company?.address || "Address not configured.", startX, 24.5, { maxWidth: startX === 14 ? 110 : 80 });
+  
+  const detailsY = startX === 14 ? 35 : 36;
+  doc.text(`GSTIN: ${company?.gstin || "N/A"} | PAN: ${company?.pan || "N/A"}`, startX, detailsY);
+  doc.text(`Email: ${company?.contactEmail || "N/A"} | Phone: ${company?.contactPhone || "N/A"}`, startX, detailsY + 4);
   
   // Right side: Document Title and Meta
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.setTextColor(217, 119, 6); // Saffron / Orange color
+  doc.setTextColor(217, 119, 6); 
   doc.text(docType.toUpperCase(), 140, 20);
   
   doc.setFont("helvetica", "normal");
@@ -55,6 +113,7 @@ export function generatePDF(docType: "Quotation" | "Sales Order", data: any, com
   doc.text(data.customer, 14, 57);
   doc.text(`Payment Terms: ${data.paymentTerms || "N/A"}`, 14, 62);
   doc.text(`Place of Supply: ${data.placeOfSupply || "N/A"}`, 14, 67);
+  doc.text(`Lead Time: ${data.leadTime || "N/A"}`, 14, 72);
   
   doc.setFont("helvetica", "bold");
   doc.text("BILLING & SHIPPING ADDRESS", 110, 52);
@@ -71,10 +130,10 @@ export function generatePDF(docType: "Quotation" | "Sales Order", data: any, com
       index + 1,
       l.itemName || "Unknown Item",
       l.qty,
-      `₹${l.rate.toLocaleString("en-IN")}`,
+      `Rs. ${l.rate.toLocaleString("en-IN")}`,
       `${l.discount}%`,
       `${l.gstRate}%`,
-      `₹${itemSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
+      `Rs. ${itemSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`
     ];
   });
   
@@ -87,23 +146,31 @@ export function generatePDF(docType: "Quotation" | "Sales Order", data: any, com
     bodyStyles: { fontSize: 8 },
     columnStyles: {
       0: { cellWidth: 10 },
-      1: { cellWidth: 70 },
+      1: { cellWidth: 65 },
       2: { cellWidth: 15, halign: "center" },
       3: { cellWidth: 25, halign: "right" },
       4: { cellWidth: 15, halign: "center" },
       5: { cellWidth: 15, halign: "center" },
-      6: { cellWidth: 32, halign: "right" }
+      6: { cellWidth: 37, halign: "right" }
     }
   });
   
   // 4. Summary & Terms (at the bottom)
   let finalY = (doc as any).lastAutoTable.finalY + 12;
   
-  // Check if we need a new page for terms/signatory
-  if (finalY > 230) {
+  if (finalY > 210) {
     doc.addPage();
     finalY = 20;
   }
+  
+  // Amount in Words
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(33, 33, 33);
+  doc.text("Amount in Words:", 14, finalY);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8.5);
+  doc.text(numberToWords(data.value), 43, finalY, { maxWidth: 90 });
   
   // Totals box on the right
   doc.setFont("helvetica", "bold");
@@ -111,17 +178,17 @@ export function generatePDF(docType: "Quotation" | "Sales Order", data: any, com
   doc.text("SUMMARY", 140, finalY);
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
-  doc.text(`Grand Total: ₹${data.value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, 140, finalY + 6);
+  doc.text(`Grand Total: Rs. ${data.value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, 140, finalY + 6);
   
   // Terms & conditions on the left
   if (data.termsConditions) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
-    doc.text("TERMS & CONDITIONS", 14, finalY);
+    doc.text("TERMS & CONDITIONS", 14, finalY + 15);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(80, 80, 80);
-    doc.text(data.termsConditions, 14, finalY + 5, { maxWidth: 110 });
+    doc.text(data.termsConditions, 14, finalY + 20, { maxWidth: 180 });
   }
   
   // Save/Download PDF

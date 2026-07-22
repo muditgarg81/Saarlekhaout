@@ -34,6 +34,7 @@ interface Order {
   shippingAddress?: string | null;
   placeOfSupply?: string | null;
   termsConditions?: string | null;
+  leadTime?: string | null;
   otherCharges?: number;
   lines?: any[];
 }
@@ -83,6 +84,7 @@ export default function OrdersList({
   const [customerPoNo, setCustomerPoNo] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
   const [termsConditions, setTermsConditions] = useState(presetTerms || "");
+  const [leadTime, setLeadTime] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
 
   useEffect(() => {
@@ -167,6 +169,7 @@ export default function OrdersList({
       customerPoNo: customerPoNo || null,
       deliveryDate: deliveryDate || null,
       termsConditions: termsConditions || null,
+      leadTime: leadTime || null,
       otherCharges: 0,
       lines: lines
         .filter((l) => l.itemId)
@@ -188,6 +191,7 @@ export default function OrdersList({
     setCustomerPoNo("");
     setDeliveryDate("");
     setTermsConditions(presetTerms || "");
+    setLeadTime("");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
@@ -292,7 +296,7 @@ export default function OrdersList({
               <button onClick={() => setIsOpen(false)} className="text-onyx/40 hover:text-onyx"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                 <div>
                   <SearchableSelect
                     options={localCustomers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
@@ -309,6 +313,10 @@ export default function OrdersList({
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Delivery date</label>
                   <input type="date" className={inputCls} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-onyx/60 mb-1">Lead Time</label>
+                  <input className={inputCls} placeholder="e.g. 2-3 Weeks" value={leadTime} onChange={(e) => setLeadTime(e.target.value)} />
                 </div>
               </div>
 
@@ -443,7 +451,7 @@ export default function OrdersList({
             </div>
 
             {/* Info Grid */}
-            <div className="grid grid-cols-2 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
+            <div className="grid grid-cols-3 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
               <div>
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer</span>
                 <span className="font-semibold text-onyx text-sm">{reviewOrder.customer}</span>
@@ -460,7 +468,15 @@ export default function OrdersList({
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Payment Terms</span>
                 <span className="font-medium text-onyx">{reviewOrder.paymentTerms || "—"}</span>
               </div>
-              <div className="col-span-2 grid grid-cols-2 gap-4 pt-3 border-t border-onyx/5">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Place of Supply</span>
+                <span className="font-medium text-onyx">{reviewOrder.placeOfSupply || "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Lead Time</span>
+                <span className="font-medium text-onyx">{reviewOrder.leadTime || "—"}</span>
+              </div>
+              <div className="col-span-3 grid grid-cols-2 gap-4 pt-3 border-t border-onyx/5">
                 <div>
                   <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Billing Address</span>
                   <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{reviewOrder.billingAddress || "—"}</p>

@@ -54,6 +54,7 @@ export default async function OrdersPage() {
     shippingAddress: o.shippingAddress,
     placeOfSupply: o.placeOfSupply,
     termsConditions: o.termsConditions,
+    leadTime: o.leadTime,
     otherCharges: o.otherCharges,
     lines: o.lines.map((l) => ({
       id: l.id,

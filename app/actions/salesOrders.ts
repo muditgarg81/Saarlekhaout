@@ -35,6 +35,7 @@ const soSchema = z.object({
   shippingAddress: z.string().optional().nullable(),
   placeOfSupply: z.string().optional().nullable(),
   termsConditions: z.string().optional().nullable(),
+  leadTime: z.string().optional().nullable(),
   otherCharges: z.number().nonnegative().default(0),
   lines: z.array(soLineSchema).min(1, "Add at least one line"),
 });
@@ -107,6 +108,7 @@ export async function createSalesOrder(data: z.infer<typeof soSchema>) {
           shippingAddress: validated.shippingAddress || customer.shippingAddress || null,
           placeOfSupply: validated.placeOfSupply || customer.stateCode || null,
           termsConditions: validated.termsConditions || null,
+          leadTime: validated.leadTime || null,
           otherCharges: validated.otherCharges,
           lines: {
             create: validated.lines.map((l) => ({

@@ -188,6 +188,7 @@ model SalesOrder {
   shippingAddress String?
   placeOfSupply   String? // GST state code; drives CGST+SGST vs IGST
   termsConditions String?
+  leadTime        String?
   otherCharges    Float     @default(0)
   version         Int       @default(1)
   approvedById    String?
@@ -468,6 +469,7 @@ model CustomerQuotation {
   shippingAddress String?
   placeOfSupply   String?
   termsConditions String?
+  leadTime        String?
   otherCharges    Float            @default(0)
   version         Int              @default(1)
   approvedById    String?

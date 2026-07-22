@@ -27,6 +27,7 @@ const quotationSchema = z.object({
   shippingAddress: z.string().optional().nullable(),
   placeOfSupply: z.string().optional().nullable(),
   termsConditions: z.string().optional().nullable(),
+  leadTime: z.string().optional().nullable(),
   otherCharges: z.number().nonnegative().default(0),
   lines: z.array(quotationLineSchema).min(1, "Add at least one line"),
 });
@@ -94,6 +95,7 @@ export async function createQuotation(data: z.infer<typeof quotationSchema>) {
           shippingAddress: validated.shippingAddress || customer.shippingAddress || null,
           placeOfSupply: validated.placeOfSupply || customer.stateCode || null,
           termsConditions: validated.termsConditions || null,
+          leadTime: validated.leadTime || null,
           otherCharges: validated.otherCharges,
           lines: {
             create: validated.lines.map((l) => ({
@@ -293,6 +295,7 @@ export async function convertToSalesOrder(id: string) {
           shippingAddress: q.shippingAddress,
           placeOfSupply: q.placeOfSupply,
           termsConditions: q.termsConditions,
+          leadTime: q.leadTime,
           otherCharges: q.otherCharges,
           quotationId: q.id,
           lines: {
