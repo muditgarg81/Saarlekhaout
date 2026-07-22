@@ -55,6 +55,7 @@ export default async function PackingListsPage() {
     totalQty: p.lines.reduce((s, l) => s + l.qty, 0),
     totalGrossWeight: p.lines.reduce((s, l) => s + (l.grossWeight || 0), 0),
     totalNetWeight: p.lines.reduce((s, l) => s + (l.netWeight || 0), 0),
+    totalTareWeight: p.lines.reduce((s, l) => s + (l.tareWeight || 0), 0),
   }));
 
   const mappedOrders = salesOrders.map((o) => ({

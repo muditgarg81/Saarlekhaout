@@ -546,6 +546,7 @@ model PackingListLine {
   qty           Float
   grossWeight   Float?      // kg
   netWeight     Float?      // kg
+  tareWeight    Float?      // kg
   dimensions    String?     // e.g. 12x12x12
   packingList   PackingList @relation(fields: [packingListId], references: [id])
   soLineId      String?

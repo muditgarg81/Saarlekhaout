@@ -25,6 +25,7 @@ interface PackingListRow {
   totalQty: number;
   totalGrossWeight: number;
   totalNetWeight: number;
+  totalTareWeight: number;
 }
 
 interface SoLine {
@@ -60,6 +61,7 @@ interface LineInput {
   qty: number;
   grossWeight: number;
   netWeight: number;
+  tareWeight: number;
   dimensions: string;
 }
 
@@ -87,7 +89,7 @@ export default function PackingListsClient({
   const [customerId, setCustomerId] = useState("");
   const [soId, setSoId] = useState("");
   const [lines, setLines] = useState<LineInput[]>([
-    { boxNo: "Box 1", itemId: "", qty: 1, grossWeight: 0, netWeight: 0, dimensions: "" },
+    { boxNo: "Box 1", itemId: "", qty: 1, grossWeight: 0, netWeight: 0, tareWeight: 0, dimensions: "" },
   ]);
 
   const canCreate = can(user, "dispatch.create") || ["ADMIN", "OWNER", "STORE_MANAGER"].includes(user.role);
@@ -139,9 +141,11 @@ export default function PackingListsClient({
         qty: l.qty,
         grossWeight: 0,
         netWeight: 0,
+        tareWeight: 0,
         dimensions: "",
+        soLineId: l.soLineId || null,
       }));
-      setLines(initialLines.length > 0 ? initialLines : [{ boxNo: "Box 1", itemId: "", qty: 1, grossWeight: 0, netWeight: 0, dimensions: "" }]);
+      setLines(initialLines.length > 0 ? initialLines : [{ boxNo: "Box 1", itemId: "", qty: 1, grossWeight: 0, netWeight: 0, tareWeight: 0, dimensions: "", soLineId: "" }]);
     } else {
       setSoId("");
     }
@@ -157,7 +161,7 @@ export default function PackingListsClient({
     }
     setLines([
       ...lines,
-      { boxNo: nextBoxNo, itemId: "", qty: 1, grossWeight: 0, netWeight: 0, dimensions: "" },
+      { boxNo: nextBoxNo, itemId: "", qty: 1, grossWeight: 0, netWeight: 0, tareWeight: 0, dimensions: "" },
     ]);
   };
 
@@ -186,7 +190,16 @@ export default function PackingListsClient({
     const res = await createPackingList({
       customerId,
       soId: soId || null,
-      lines: filteredLines,
+      lines: filteredLines.map(l => ({
+        boxNo: l.boxNo,
+        itemId: l.itemId,
+        qty: l.qty,
+        grossWeight: l.grossWeight || 0,
+        netWeight: l.netWeight || 0,
+        tareWeight: l.tareWeight || 0,
+        dimensions: l.dimensions || null,
+        soLineId: (l as any).soLineId || null,
+      })),
     });
 
     setLoading(false);
@@ -198,7 +211,7 @@ export default function PackingListsClient({
     setIsOpen(false);
     setCustomerId("");
     setSoId("");
-    setLines([{ boxNo: "Box 1", itemId: "", qty: 1, grossWeight: 0, netWeight: 0, dimensions: "" }]);
+    setLines([{ boxNo: "Box 1", itemId: "", qty: 1, grossWeight: 0, netWeight: 0, tareWeight: 0, dimensions: "" }]);
     router.refresh();
   };
 
@@ -265,8 +278,9 @@ export default function PackingListsClient({
               <th className="text-left px-4 py-3 font-semibold">Sales Order</th>
               <th className="text-right px-4 py-3 font-semibold">Boxes</th>
               <th className="text-right px-4 py-3 font-semibold">Total Qty</th>
-              <th className="text-right px-4 py-3 font-semibold">Gross Wt. (kg)</th>
               <th className="text-right px-4 py-3 font-semibold">Net Wt. (kg)</th>
+              <th className="text-right px-4 py-3 font-semibold">Tare Wt. (kg)</th>
+              <th className="text-right px-4 py-3 font-semibold">Gross Wt. (kg)</th>
               <th className="text-left px-4 py-3 font-semibold">Status</th>
               <th className="px-4 py-3"></th>
             </tr>
@@ -279,8 +293,9 @@ export default function PackingListsClient({
                 <td className="px-4 py-3 text-onyx/60">{p.soNumber || "—"}</td>
                 <td className="px-4 py-3 text-right font-medium">{p.boxCount}</td>
                 <td className="px-4 py-3 text-right text-onyx/80">{p.totalQty}</td>
-                <td className="px-4 py-3 text-right text-onyx/60">{p.totalGrossWeight.toFixed(2)}</td>
                 <td className="px-4 py-3 text-right text-onyx/60">{p.totalNetWeight.toFixed(2)}</td>
+                <td className="px-4 py-3 text-right text-onyx/60">{p.totalTareWeight.toFixed(2)}</td>
+                <td className="px-4 py-3 text-right text-onyx/60">{p.totalGrossWeight.toFixed(2)}</td>
                 <td className="px-4 py-3">
                   <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
                     p.status === "APPROVED" 
@@ -329,7 +344,7 @@ export default function PackingListsClient({
             ))}
             {packingLists.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-12 text-center text-onyx/40 text-sm">
+                <td colSpan={10} className="px-4 py-12 text-center text-onyx/40 text-sm">
                   No packing lists found. Create one to support your dispatches.
                 </td>
               </tr>
@@ -382,8 +397,9 @@ export default function PackingListsClient({
                       <th className="text-left px-3 py-2 w-28">Box / Carton</th>
                       <th className="text-left px-3 py-2">Item *</th>
                       <th className="px-3 py-2 w-20">Qty *</th>
-                      <th className="px-3 py-2 w-24">Gross Wt (kg)</th>
                       <th className="px-3 py-2 w-24">Net Wt (kg)</th>
+                      <th className="px-3 py-2 w-24">Tare Wt (kg)</th>
+                      <th className="px-3 py-2 w-24">Gross Wt (kg)</th>
                       <th className="px-3 py-2 w-28">Dimensions</th>
                       <th className="w-10"></th>
                     </tr>
@@ -423,8 +439,14 @@ export default function PackingListsClient({
                           <input
                             type="number"
                             className={cellCls}
-                            value={l.grossWeight}
-                            onChange={(e) => updateLine(idx, { grossWeight: Number(e.target.value) })}
+                            value={l.netWeight}
+                            onChange={(e) => {
+                              const net = Number(e.target.value);
+                              updateLine(idx, { 
+                                netWeight: net,
+                                grossWeight: net + l.tareWeight
+                              });
+                            }}
                             min={0}
                             step="any"
                             placeholder="0.0"
@@ -434,11 +456,27 @@ export default function PackingListsClient({
                           <input
                             type="number"
                             className={cellCls}
-                            value={l.netWeight}
-                            onChange={(e) => updateLine(idx, { netWeight: Number(e.target.value) })}
+                            value={l.tareWeight}
+                            onChange={(e) => {
+                              const tare = Number(e.target.value);
+                              updateLine(idx, { 
+                                tareWeight: tare,
+                                grossWeight: l.netWeight + tare
+                              });
+                            }}
                             min={0}
                             step="any"
                             placeholder="0.0"
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="number"
+                            className={`${cellCls} bg-onyx/5 font-semibold`}
+                            value={l.grossWeight}
+                            min={0}
+                            step="any"
+                            disabled
                           />
                         </td>
                         <td className="px-3 py-1.5">

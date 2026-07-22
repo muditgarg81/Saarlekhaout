@@ -46,6 +46,7 @@ interface LineInput {
   qty: number;
   grossWeight: number;
   netWeight: number;
+  tareWeight: number;
   dimensions: string;
 }
 
@@ -67,7 +68,7 @@ export default function OrderReadyClient({
   const [error, setError] = useState<string | null>(null);
 
   const [lines, setLines] = useState<LineInput[]>([
-    { boxNo: "Box 1", itemId: "", soLineId: "", qty: 1, grossWeight: 0, netWeight: 0, dimensions: "" },
+    { boxNo: "Box 1", itemId: "", soLineId: "", qty: 1, grossWeight: 0, netWeight: 0, tareWeight: 0, dimensions: "" },
   ]);
 
   const canCreate = can(user, "dispatch.create") || ["ADMIN", "OWNER", "STORE_MANAGER", "STORE_KEEPER"].includes(user.role);
@@ -85,6 +86,7 @@ export default function OrderReadyClient({
         qty: firstLine ? Math.min(1, firstLine.pendingQty) : 1,
         grossWeight: 0,
         netWeight: 0,
+        tareWeight: 0,
         dimensions: "",
       },
     ]);
@@ -103,6 +105,7 @@ export default function OrderReadyClient({
         qty: firstLine ? Math.min(1, firstLine.pendingQty) : 1,
         grossWeight: 0,
         netWeight: 0,
+        tareWeight: 0,
         dimensions: "",
       },
     ]);
@@ -172,6 +175,7 @@ export default function OrderReadyClient({
         qty: l.qty,
         grossWeight: l.grossWeight || 0,
         netWeight: l.netWeight || 0,
+        tareWeight: l.tareWeight || 0,
         dimensions: l.dimensions || null,
         soLineId: l.soLineId || null,
       })),
@@ -335,77 +339,119 @@ export default function OrderReadyClient({
                   {lines.map((line, idx) => (
                     <div
                       key={idx}
-                      className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end bg-onyx/[0.02] p-3 rounded-xl border border-onyx/5 relative"
+                      className="bg-onyx/[0.02] p-4 rounded-xl border border-onyx/5 relative space-y-3"
                     >
-                      <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-onyx/50 mb-1">Box / Carton #</label>
-                        <input
-                          value={line.boxNo}
-                          onChange={(e) => setLineField(idx, { boxNo: e.target.value })}
-                          className={inputCls}
-                          placeholder="e.g. Box 1"
-                        />
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1">Box / Carton #</label>
+                          <input
+                            value={line.boxNo}
+                            onChange={(e) => setLineField(idx, { boxNo: e.target.value })}
+                            className={inputCls}
+                            placeholder="e.g. Box 1"
+                          />
+                        </div>
+
+                        <div className="sm:col-span-6">
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1">Select Item</label>
+                          <select
+                            value={line.itemId}
+                            onChange={(e) => setLineField(idx, { itemId: e.target.value })}
+                            className={inputCls}
+                          >
+                            <option value="" disabled>Select Item...</option>
+                            {selectedOrder.lines.map((sol) => (
+                              <option key={sol.itemId} value={sol.itemId}>
+                                {sol.itemName} (Pending: {sol.pendingQty})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1">Ready Qty</label>
+                          <input
+                            type="number"
+                            value={line.qty}
+                            onChange={(e) => setLineField(idx, { qty: Number(e.target.value) })}
+                            className={inputCls}
+                            min={1}
+                          />
+                        </div>
                       </div>
 
-                      <div className="sm:col-span-3">
-                        <label className="block text-[10px] font-bold text-onyx/50 mb-1">Select Item</label>
-                        <select
-                          value={line.itemId}
-                          onChange={(e) => setLineField(idx, { itemId: e.target.value })}
-                          className={inputCls}
-                        >
-                          <option value="" disabled>Select Item...</option>
-                          {selectedOrder.lines.map((sol) => (
-                            <option key={sol.itemId} value={sol.itemId}>
-                              {sol.itemName} (Pending: {sol.pendingQty})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end pt-2 border-t border-onyx/5">
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1 flex items-center gap-0.5">
+                            Net Wt (kg)
+                          </label>
+                          <input
+                            type="number"
+                            value={line.netWeight}
+                            onChange={(e) => {
+                              const net = Number(e.target.value);
+                              setLineField(idx, { 
+                                netWeight: net,
+                                grossWeight: net + line.tareWeight
+                              });
+                            }}
+                            className={inputCls}
+                            placeholder="0"
+                          />
+                        </div>
 
-                      <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-onyx/50 mb-1">Ready Qty</label>
-                        <input
-                          type="number"
-                          value={line.qty}
-                          onChange={(e) => setLineField(idx, { qty: Number(e.target.value) })}
-                          className={inputCls}
-                          min={1}
-                        />
-                      </div>
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1 flex items-center gap-0.5">
+                            Tare Wt (kg)
+                          </label>
+                          <input
+                            type="number"
+                            value={line.tareWeight}
+                            onChange={(e) => {
+                              const tare = Number(e.target.value);
+                              setLineField(idx, { 
+                                tareWeight: tare,
+                                grossWeight: line.netWeight + tare
+                              });
+                            }}
+                            className={inputCls}
+                            placeholder="0"
+                          />
+                        </div>
 
-                      <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-onyx/50 mb-1 flex items-center gap-0.5">
-                          <Scale size={10} /> Gross Wt (kg)
-                        </label>
-                        <input
-                          type="number"
-                          value={line.grossWeight}
-                          onChange={(e) => setLineField(idx, { grossWeight: Number(e.target.value) })}
-                          className={inputCls}
-                          placeholder="0"
-                        />
-                      </div>
+                        <div className="sm:col-span-3">
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1 flex items-center gap-0.5">
+                            <Scale size={10} /> Gross Wt (kg)
+                          </label>
+                          <input
+                            type="number"
+                            value={line.grossWeight}
+                            className={`${inputCls} bg-onyx/5 font-semibold`}
+                            placeholder="0"
+                            disabled
+                          />
+                        </div>
 
-                      <div className="sm:col-span-2">
-                        <label className="block text-[10px] font-bold text-onyx/50 mb-1">Dimensions</label>
-                        <input
-                          value={line.dimensions}
-                          onChange={(e) => setLineField(idx, { dimensions: e.target.value })}
-                          className={inputCls}
-                          placeholder="e.g. 12x12x12"
-                        />
-                      </div>
+                        <div className="sm:col-span-2">
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1">Dimensions</label>
+                          <input
+                            value={line.dimensions}
+                            onChange={(e) => setLineField(idx, { dimensions: e.target.value })}
+                            className={inputCls}
+                            placeholder="e.g. 12x12x12"
+                          />
+                        </div>
 
-                      <div className="sm:col-span-1 flex justify-end">
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveLine(idx)}
-                          disabled={lines.length === 1}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <div className="sm:col-span-1 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveLine(idx)}
+                            disabled={lines.length === 1}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-2 rounded-lg transition-colors disabled:opacity-30 disabled:hover:bg-transparent"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   ))}
