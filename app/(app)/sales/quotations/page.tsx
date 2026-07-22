@@ -22,7 +22,7 @@ export default async function QuotationsPage() {
     }),
     db.item.findMany({
       where: { companyId, deletedAt: null, status: "ACTIVE" },
-      select: { id: true, code: true, name: true, baseUom: true, gstRate: true },
+      select: { id: true, code: true, name: true, baseUom: true, gstRate: true, specification: true },
       orderBy: { name: "asc" },
       take: 1000,
     }),

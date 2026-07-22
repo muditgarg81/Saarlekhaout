@@ -16,6 +16,7 @@ const quotationLineSchema = z.object({
   rate: z.number().nonnegative(),
   discount: z.number().min(0).max(100).default(0),
   gstRate: z.number().min(0).default(0),
+  specification: z.string().optional().nullable(),
 });
 
 const quotationSchema = z.object({
@@ -101,6 +102,7 @@ export async function createQuotation(data: z.infer<typeof quotationSchema>) {
               rate: l.rate,
               discount: l.discount,
               gstRate: l.gstRate,
+              specification: l.specification || null,
             })),
           },
         },
@@ -300,6 +302,7 @@ export async function convertToSalesOrder(id: string) {
               rate: l.rate,
               discount: l.discount,
               gstRate: l.gstRate,
+              specification: l.specification,
             })),
           },
         },

@@ -11,8 +11,11 @@ import {
   createDepartment,
   updateDepartment,
   deleteDepartment,
-  updateReorderLevels
+  updateReorderLevels,
+  quickCreateCategory
 } from "@/app/actions/items";
+import { useRouter } from "next/navigation";
+import { SearchableSelect } from "@/components/SearchableSelect";
 import { 
   Search, 
   Plus, 
@@ -78,8 +81,10 @@ interface ItemMasterListProps {
 }
 
 export default function ItemMasterList({ initialItems, categories, departments }: ItemMasterListProps) {
+  const router = useRouter();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [search, setSearch] = useState("");
+  const [localCategories, setLocalCategories] = useState<Category[]>(categories);
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [selectedDepartment, setSelectedDepartment] = useState("all");
   const [selectedType, setSelectedType] = useState("all");
@@ -591,7 +596,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
     setFormData(prev => ({ ...prev, categoryId: catId }));
     if (!catId) return;
 
-    const cat = categories.find(c => c.id === catId);
+    const cat = localCategories.find(c => c.id === catId);
     if (cat && modalMode === "create") {
       try {
         const suggestedCode = await getNextCode(cat.code);
@@ -602,6 +607,32 @@ export default function ItemMasterList({ initialItems, categories, departments }
     }
   };
 
+  const handleQuickCreateCategory = async (name: string) => {
+    const res = await quickCreateCategory({ name });
+    if (res.success && res.category) {
+      const newCat: Category = {
+        id: res.category.id,
+        code: res.category.code,
+        name: res.category.name,
+      };
+      setLocalCategories((prev) => [...prev, newCat]);
+      setFormData((prev) => ({ ...prev, categoryId: newCat.id }));
+      if (modalMode === "create") {
+        try {
+          const suggestedCode = await getNextCode(newCat.code);
+          setFormData((prev) => ({ ...prev, code: suggestedCode }));
+        } catch (e) {
+          console.error(e);
+        }
+      }
+      router.refresh();
+      return { value: newCat.id, label: `${newCat.name} (${newCat.code})` };
+    } else {
+      alert(res.error || "Failed to create category");
+      return null;
+    }
+  };
+
   const handleOpenCreate = async () => {
     setModalMode("create");
     setFormError(null);
@@ -609,7 +640,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
       id: "",
       name: "",
       description: "",
-      categoryId: categories[0]?.id || "",
+      categoryId: localCategories[0]?.id || "",
       departmentId: "",
       type: "RAW_MATERIAL",
       baseUom: "KG",
@@ -631,9 +662,9 @@ export default function ItemMasterList({ initialItems, categories, departments }
     setIsModalOpen(true);
     
     // Auto fill suggested code for first category
-    if (categories[0]) {
+    if (localCategories[0]) {
       try {
-        const suggestedCode = await getNextCode(categories[0].code);
+        const suggestedCode = await getNextCode(localCategories[0].code);
         setFormData(prev => ({ ...prev, code: suggestedCode }));
       } catch (err) {
         console.error(err);
@@ -899,7 +930,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
             className="text-xs bg-cream-dark/45 border border-onyx/10 rounded-lg px-3 py-2 focus:outline-none focus:border-saffron"
           >
             <option value="all">All Categories</option>
-            {categories.map(c => (
+            {localCategories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
@@ -1523,18 +1554,14 @@ export default function ItemMasterList({ initialItems, categories, departments }
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">
                     Item Category *
                   </label>
-                  <select
+                  <SearchableSelect
+                    options={localCategories.map(c => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                     value={formData.categoryId}
-                    onChange={(e) => handleFormCategoryChange(e.target.value)}
+                    onChange={(val) => handleFormCategoryChange(val)}
                     disabled={modalMode === "edit"}
-                    className="w-full text-xs p-2 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
-                    required
-                  >
-                    <option value="">Select Category</option>
-                    {categories.map(c => (
-                      <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                    ))}
-                  </select>
+                    placeholder="Select Category"
+                    onCreateOption={handleQuickCreateCategory}
+                  />
                 </div>
                 <div>
                   <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">

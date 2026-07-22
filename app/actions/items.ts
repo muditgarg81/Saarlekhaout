@@ -965,3 +965,50 @@ export async function quickCreateItem(data: { name: string; gstRate?: number; ba
   }
 }
 
+export async function quickCreateCategory(data: { name: string; code?: string }) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+
+  const companyId = (session.user as any).companyId;
+
+  try {
+    const name = data.name.trim();
+    if (!name || name.length < 2) {
+      return { success: false, error: "Category name must be at least 2 characters" };
+    }
+
+    let code = data.code?.trim().toUpperCase();
+    if (!code) {
+      code = name.toUpperCase().replace(/[^A-Z0-9]/g, "_").slice(0, 10);
+      if (!code) code = "CAT";
+      
+      // Ensure unique code
+      const count = await db.itemCategory.count({ where: { companyId, code } });
+      if (count > 0) {
+        code = `${code}_${Math.floor(100 + Math.random() * 900)}`;
+      }
+    }
+
+    const exists = await db.itemCategory.findFirst({
+      where: { companyId, code }
+    });
+    if (exists) {
+      return { success: false, error: `Category code '${code}' already exists` };
+    }
+
+    const newCategory = await db.itemCategory.create({
+      data: {
+        companyId,
+        code,
+        name,
+      }
+    });
+
+    revalidatePath("/stores/items");
+    return { success: true, category: newCategory };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to create category" };
+  }
+}
+
+

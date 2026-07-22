@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   createSalesOrder,
@@ -29,7 +29,7 @@ interface Order {
   lineCount: number;
 }
 interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null }
-interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null }
+interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null; specification: string | null }
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-700 border-gray-200",
@@ -43,7 +43,7 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-800 border-red-200",
 };
 
-type Line = { itemId: string; qty: number; rate: number; discount: number; gstRate: number };
+type Line = { itemId: string; qty: number; rate: number; discount: number; gstRate: number; specification: string };
 
 export default function OrdersList({
   initialOrders,
@@ -66,7 +66,7 @@ export default function OrdersList({
   const [customerId, setCustomerId] = useState("");
   const [customerPoNo, setCustomerPoNo] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
+  const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
 
   const canCreate = can(user, "so.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "so.approve") || ["ADMIN", "OWNER"].includes(user.role);
@@ -84,6 +84,7 @@ export default function OrdersList({
         name: res.item.name,
         baseUom: res.item.baseUom,
         gstRate: res.item.gstRate,
+        specification: null,
       };
       setLocalItems((prev) => [...prev, newItem]);
       router.refresh();
@@ -114,14 +115,14 @@ export default function OrdersList({
     }
   };
 
-  const addLine = () => setLines([...lines, { itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
+  const addLine = () => setLines([...lines, { itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
   const setLine = (i: number, patch: Partial<Line>) =>
     setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
   const onItemPick = (i: number, itemId: string) => {
     const it = itemById.get(itemId);
-    setLine(i, { itemId, gstRate: it?.gstRate ?? 18 });
+    setLine(i, { itemId, gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
   const submit = async () => {
@@ -152,7 +153,7 @@ export default function OrdersList({
     setCustomerId("");
     setCustomerPoNo("");
     setDeliveryDate("");
-    setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
+    setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
 
@@ -288,27 +289,43 @@ export default function OrdersList({
                   </thead>
                   <tbody>
                     {lines.map((l, i) => (
-                      <tr key={i} className="border-t border-onyx/5">
-                        <td className="px-2 py-1">
-                          <SearchableItemSelect
-                            items={localItems.map((it) => ({ id: it.id, code: it.code, name: it.name }))}
-                            value={l.itemId}
-                            onChange={(val) => onItemPick(i, val)}
-                            placeholder="Select Item..."
-                            onCreateItem={handleQuickCreateItem}
-                          />
-                        </td>
-                        <td className="px-2 py-1"><input type="number" className={cellCls} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} /></td>
-                        <td className="px-2 py-1"><input type="number" className={cellCls} value={l.rate} onChange={(e) => setLine(i, { rate: Number(e.target.value) })} /></td>
-                        <td className="px-2 py-1"><input type="number" className={cellCls} value={l.discount} onChange={(e) => setLine(i, { discount: Number(e.target.value) })} /></td>
-                        <td className="px-2 py-1"><input type="number" className={cellCls} value={l.gstRate} onChange={(e) => setLine(i, { gstRate: Number(e.target.value) })} /></td>
-                        <td className="px-2 py-1 text-right font-medium">₹{lineTotal(l).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
-                        <td className="px-2 py-1 text-center">
-                          {lines.length > 1 && (
-                            <button onClick={() => removeLine(i)} className="text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
-                          )}
-                        </td>
-                      </tr>
+                      <React.Fragment key={i}>
+                        <tr className="border-t border-onyx/5">
+                          <td className="px-2 py-1">
+                            <SearchableItemSelect
+                              items={localItems.map((it) => ({ id: it.id, code: it.code, name: it.name }))}
+                              value={l.itemId}
+                              onChange={(val) => onItemPick(i, val)}
+                              placeholder="Select Item..."
+                              onCreateItem={handleQuickCreateItem}
+                            />
+                          </td>
+                          <td className="px-2 py-1"><input type="number" className={cellCls} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} /></td>
+                          <td className="px-2 py-1"><input type="number" className={cellCls} value={l.rate} onChange={(e) => setLine(i, { rate: Number(e.target.value) })} /></td>
+                          <td className="px-2 py-1"><input type="number" className={cellCls} value={l.discount} onChange={(e) => setLine(i, { discount: Number(e.target.value) })} /></td>
+                          <td className="px-2 py-1"><input type="number" className={cellCls} value={l.gstRate} onChange={(e) => setLine(i, { gstRate: Number(e.target.value) })} /></td>
+                          <td className="px-2 py-1 text-right font-medium">₹{lineTotal(l).toLocaleString("en-IN", { maximumFractionDigits: 0 })}</td>
+                          <td className="px-2 py-1 text-center">
+                            {lines.length > 1 && (
+                              <button onClick={() => removeLine(i)} className="text-red-400 hover:text-red-600"><Trash2 size={13} /></button>
+                            )}
+                          </td>
+                        </tr>
+                        <tr className="bg-cream-light/5">
+                          <td colSpan={7} className="px-2 py-1 pb-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-bold text-onyx/40 uppercase tracking-wider shrink-0">Tech Spec:</span>
+                              <input
+                                type="text"
+                                placeholder="Technical Specification (e.g. Dimensions, Grade, Material specs)"
+                                value={l.specification}
+                                onChange={(e) => setLine(i, { specification: e.target.value })}
+                                className="flex-1 text-[11px] px-2 py-0.5 bg-white border border-onyx/10 rounded focus:outline-none focus:border-saffron placeholder-onyx/30"
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>

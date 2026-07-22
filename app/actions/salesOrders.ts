@@ -21,6 +21,7 @@ const soLineSchema = z.object({
   discount: z.number().min(0).max(100).default(0),
   gstRate: z.number().min(0).default(0),
   requiredBy: z.string().optional().nullable(),
+  specification: z.string().optional().nullable(),
 });
 
 const soSchema = z.object({
@@ -115,6 +116,7 @@ export async function createSalesOrder(data: z.infer<typeof soSchema>) {
               discount: l.discount,
               gstRate: l.gstRate,
               requiredBy: l.requiredBy ? new Date(l.requiredBy) : null,
+              specification: l.specification || null,
             })),
           },
         },

@@ -29,7 +29,7 @@ interface Quotation {
   lineCount: number;
 }
 interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null; billingAddresses?: any; shippingAddresses?: any; billingAddress?: string | null; shippingAddress?: string | null; }
-interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null }
+interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null; specification: string | null }
 
 const STATUS_STYLES: Record<string, string> = {
   DRAFT: "bg-gray-100 text-gray-700 border-gray-200",
@@ -41,7 +41,7 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-800 border-red-200",
 };
 
-type Line = { itemId: string; qty: number; rate: number; discount: number; gstRate: number };
+type Line = { itemId: string; qty: number; rate: number; discount: number; gstRate: number; specification: string };
 
 export default function QuotationsList({
   initialQuotations,
@@ -68,7 +68,7 @@ export default function QuotationsList({
   const [shippingAddress, setShippingAddress] = useState("");
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [termsConditions, setTermsConditions] = useState("");
-  const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
+  const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
 
@@ -88,6 +88,7 @@ export default function QuotationsList({
         name: res.item.name,
         baseUom: res.item.baseUom,
         gstRate: res.item.gstRate,
+        specification: null,
       };
       setLocalItems((prev) => [...prev, newItem]);
       router.refresh();
@@ -98,14 +99,14 @@ export default function QuotationsList({
     }
   };
 
-  const addLine = () => setLines([...lines, { itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
+  const addLine = () => setLines([...lines, { itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
   const setLine = (i: number, patch: Partial<Line>) =>
     setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
   const onItemPick = (i: number, itemId: string) => {
     const it = itemById.get(itemId);
-    setLine(i, { itemId, gstRate: it?.gstRate ?? 18 });
+    setLine(i, { itemId, gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
   const handleCustomerPick = (id: string) => {
@@ -205,7 +206,7 @@ export default function QuotationsList({
     setShippingAddress("");
     setPlaceOfSupply("");
     setTermsConditions("");
-    setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
+    setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
 
@@ -443,68 +444,82 @@ export default function QuotationsList({
                   </div>
                 )}
                 {lines.map((l, idx) => (
-                  <div key={idx} className="flex items-center gap-3 border border-onyx/5 p-3 rounded-lg bg-cream-light/10">
-                    <div className="flex-1 min-w-[200px]">
-                      <SearchableItemSelect
-                        items={localItems.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
-                        value={l.itemId}
-                        onChange={(val) => onItemPick(idx, val)}
-                        placeholder="Pick Item"
-                        onCreateItem={handleQuickCreateItem}
-                      />
+                  <div key={idx} className="border border-onyx/5 p-3 rounded-lg bg-cream-light/10 space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 min-w-[200px]">
+                        <SearchableItemSelect
+                          items={localItems.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
+                          value={l.itemId}
+                          onChange={(val) => onItemPick(idx, val)}
+                          placeholder="Pick Item"
+                          onCreateItem={handleQuickCreateItem}
+                        />
+                      </div>
+
+                      <div className="w-20">
+                        <input
+                          type="number"
+                          placeholder="Qty"
+                          value={l.qty}
+                          onChange={(e) => setLine(idx, { qty: Number(e.target.value) })}
+                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                        />
+                      </div>
+
+                      <div className="w-24">
+                        <input
+                          type="number"
+                          placeholder="Rate"
+                          value={l.rate}
+                          onChange={(e) => setLine(idx, { rate: Number(e.target.value) })}
+                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                        />
+                      </div>
+
+                      <div className="w-20">
+                        <input
+                          type="number"
+                          placeholder="Disc %"
+                          value={l.discount}
+                          onChange={(e) => setLine(idx, { discount: Number(e.target.value) })}
+                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                        />
+                      </div>
+
+                      <div className="w-20">
+                        <input
+                          type="number"
+                          placeholder="GST %"
+                          value={l.gstRate}
+                          onChange={(e) => setLine(idx, { gstRate: Number(e.target.value) })}
+                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                        />
+                      </div>
+
+                      <div className="w-24 text-right text-xs font-semibold text-onyx">
+                        ₹{lineTotal(l).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => removeLine(idx)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
+                      >
+                        <Trash2 size={14} />
+                      </button>
                     </div>
 
-                    <div className="w-20">
+                    {/* Technical Specification Row */}
+                    <div className="flex items-center gap-2 pl-1">
+                      <span className="text-[9px] font-bold text-onyx/40 uppercase tracking-wider shrink-0">Tech Spec:</span>
                       <input
-                        type="number"
-                        placeholder="Qty"
-                        value={l.qty}
-                        onChange={(e) => setLine(idx, { qty: Number(e.target.value) })}
-                        className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                        type="text"
+                        placeholder="e.g. Dimensions, Grade, Material specifications"
+                        value={l.specification}
+                        onChange={(e) => setLine(idx, { specification: e.target.value })}
+                        className="flex-1 text-[11px] px-2 py-1 bg-white border border-onyx/10 rounded focus:outline-none focus:border-saffron placeholder-onyx/30"
                       />
                     </div>
-
-                    <div className="w-24">
-                      <input
-                        type="number"
-                        placeholder="Rate"
-                        value={l.rate}
-                        onChange={(e) => setLine(idx, { rate: Number(e.target.value) })}
-                        className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
-                      />
-                    </div>
-
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        placeholder="Disc %"
-                        value={l.discount}
-                        onChange={(e) => setLine(idx, { discount: Number(e.target.value) })}
-                        className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
-                      />
-                    </div>
-
-                    <div className="w-20">
-                      <input
-                        type="number"
-                        placeholder="GST %"
-                        value={l.gstRate}
-                        onChange={(e) => setLine(idx, { gstRate: Number(e.target.value) })}
-                        className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
-                      />
-                    </div>
-
-                    <div className="w-24 text-right text-xs font-semibold text-onyx">
-                      ₹{lineTotal(l).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => removeLine(idx)}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded"
-                    >
-                      <Trash2 size={14} />
-                    </button>
                   </div>
                 ))}
               </div>

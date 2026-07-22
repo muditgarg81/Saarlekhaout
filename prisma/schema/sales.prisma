@@ -220,6 +220,7 @@ model SoLine {
   discount      Float          @default(0) // %
   gstRate       Float          @default(0) // %
   requiredBy    DateTime?
+  specification String?
   status        SoLineStatus   @default(OPEN)
   so            SalesOrder     @relation(fields: [soId], references: [id])
   dispatchLines DispatchLine[]
@@ -484,14 +485,15 @@ model CustomerQuotation {
 }
 
 model CustomerQuotationLine {
-  id          String            @id @default(cuid())
-  quotationId String
-  itemId      String
-  qty         Float
-  rate        Float
-  discount    Float             @default(0) // %
-  gstRate     Float             @default(0) // %
-  quotation   CustomerQuotation @relation(fields: [quotationId], references: [id])
+  id            String            @id @default(cuid())
+  quotationId   String
+  itemId        String
+  qty           Float
+  rate          Float
+  discount      Float             @default(0) // %
+  gstRate       Float             @default(0) // %
+  specification String?
+  quotation     CustomerQuotation @relation(fields: [quotationId], references: [id])
 
   @@schema("sales")
 }
