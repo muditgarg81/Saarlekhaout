@@ -326,7 +326,7 @@ export default function QuotationsList({
                     <button title="Review Details" onClick={() => setReviewQuotation(q)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
                       <Eye size={15} />
                     </button>
-                    {(q.status === "DRAFT" || q.status === "SENT") && canCreate && (
+                    {(q.status === "DRAFT" || q.status === "SENT" || q.status === "ACCEPTED") && canCreate && (
                       <>
                         <button
                           title="Edit Quotation"

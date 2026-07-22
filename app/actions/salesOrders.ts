@@ -289,7 +289,7 @@ export async function deleteSalesOrder(id: string) {
       where: { id, companyId, deletedAt: null },
     });
     if (!so) return { success: false, error: "Sales order not found" };
-    if (so.status !== SoStatus.DRAFT && so.status !== SoStatus.PENDING_APPROVAL) {
+    if (so.status !== SoStatus.DRAFT && so.status !== SoStatus.PENDING_APPROVAL && so.status !== SoStatus.CONFIRMED) {
       return { success: false, error: `Cannot delete order in ${so.status} state.` };
     }
 
@@ -323,7 +323,7 @@ export async function updateSalesOrder(id: string, data: z.infer<typeof soSchema
       include: { lines: true }
     });
     if (!so) return { success: false, error: "Sales order not found" };
-    if (so.status !== SoStatus.DRAFT && so.status !== SoStatus.PENDING_APPROVAL) {
+    if (so.status !== SoStatus.DRAFT && so.status !== SoStatus.PENDING_APPROVAL && so.status !== SoStatus.CONFIRMED) {
       return { success: false, error: `Cannot edit order in ${so.status} state.` };
     }
 

@@ -343,7 +343,7 @@ export async function deleteQuotation(id: string) {
       where: { id, companyId, deletedAt: null },
     });
     if (!q) return { success: false, error: "Quotation not found" };
-    if (q.status !== QuotationStatus.DRAFT && q.status !== QuotationStatus.SENT) {
+    if (q.status !== QuotationStatus.DRAFT && q.status !== QuotationStatus.SENT && q.status !== QuotationStatus.ACCEPTED) {
       return { success: false, error: `Cannot delete quotation in ${q.status} state.` };
     }
 
@@ -377,7 +377,7 @@ export async function updateQuotation(id: string, data: z.infer<typeof quotation
       include: { lines: true }
     });
     if (!q) return { success: false, error: "Quotation not found" };
-    if (q.status !== QuotationStatus.DRAFT && q.status !== QuotationStatus.SENT) {
+    if (q.status !== QuotationStatus.DRAFT && q.status !== QuotationStatus.SENT && q.status !== QuotationStatus.ACCEPTED) {
       return { success: false, error: `Cannot edit quotation in ${q.status} state.` };
     }
 

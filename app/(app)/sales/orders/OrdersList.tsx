@@ -323,7 +323,7 @@ export default function OrdersList({
                     <button title="Review Details" onClick={() => setReviewOrder(o)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
                       <Eye size={15} />
                     </button>
-                    {(o.status === "DRAFT" || o.status === "PENDING_APPROVAL") && canCreate && (
+                    {(o.status === "DRAFT" || o.status === "PENDING_APPROVAL" || o.status === "CONFIRMED") && canCreate && (
                       <>
                         <button
                           title="Edit Order"
