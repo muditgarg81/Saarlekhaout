@@ -276,7 +276,7 @@ export default function PackingListsClient({
               <th className="text-left px-4 py-3 font-semibold">PL #</th>
               <th className="text-left px-4 py-3 font-semibold">Customer</th>
               <th className="text-left px-4 py-3 font-semibold">Sales Order</th>
-              <th className="text-right px-4 py-3 font-semibold">Boxes</th>
+              <th className="text-right px-4 py-3 font-semibold">Bales/Pallets</th>
               <th className="text-right px-4 py-3 font-semibold">Total Qty</th>
               <th className="text-right px-4 py-3 font-semibold">Net Wt. (kg)</th>
               <th className="text-right px-4 py-3 font-semibold">Tare Wt. (kg)</th>
@@ -394,7 +394,7 @@ export default function PackingListsClient({
                 <table className="w-full text-xs">
                   <thead className="bg-cream-light text-onyx/60 uppercase font-semibold">
                     <tr>
-                      <th className="text-left px-3 py-2 w-28">Box / Carton</th>
+                      <th className="text-left px-3 py-2 w-28">Bale / Pallet</th>
                       <th className="text-left px-3 py-2">Item *</th>
                       <th className="px-3 py-2 w-20">Qty *</th>
                       <th className="px-3 py-2 w-24">Net Wt (kg)</th>
@@ -413,7 +413,7 @@ export default function PackingListsClient({
                             className={cellCls}
                             value={l.boxNo}
                             onChange={(e) => updateLine(idx, { boxNo: e.target.value })}
-                            placeholder="e.g. Box 1"
+                            placeholder="e.g. Bale 1"
                           />
                         </td>
                         <td className="px-3 py-1.5">
@@ -509,7 +509,7 @@ export default function PackingListsClient({
                   onClick={addLine}
                   className="text-xs text-saffron-dark hover:text-saffron-darker font-bold flex items-center gap-1 transition"
                 >
-                  <Plus size={14} /> Add Box / Item
+                  <Plus size={14} /> Add Bale/Pallet / Item
                 </button>
               </div>
 

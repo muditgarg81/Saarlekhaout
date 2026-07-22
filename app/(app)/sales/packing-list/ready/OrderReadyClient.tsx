@@ -140,11 +140,11 @@ export default function OrderReadyClient({
     // Validate box inputs
     for (const l of lines) {
       if (!l.itemId) {
-        setError("Please select an item for all packing boxes.");
+        setError("Please select an item for all packing bales/pallets.");
         return;
       }
       if (l.qty <= 0) {
-        setError("Box quantities must be greater than zero.");
+        setError("Quantities must be greater than zero.");
         return;
       }
     }
@@ -324,14 +324,14 @@ export default function OrderReadyClient({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-[10px] font-bold uppercase tracking-wider text-onyx/40">
-                    Boxes & Package Details
+                    Bales/Pallets & Package Details
                   </h3>
                   <button
                     type="button"
                     onClick={handleAddLine}
                     className="flex items-center gap-1 text-[10px] font-bold text-saffron-dark hover:text-saffron-dark/85"
                   >
-                    <Plus size={12} /> Add Box / Item
+                    <Plus size={12} /> Add Bale/Pallet / Item
                   </button>
                 </div>
 
@@ -343,12 +343,12 @@ export default function OrderReadyClient({
                     >
                       <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-end">
                         <div className="sm:col-span-3">
-                          <label className="block text-[10px] font-bold text-onyx/50 mb-1">Box / Carton #</label>
+                          <label className="block text-[10px] font-bold text-onyx/50 mb-1">Bale / Pallet #</label>
                           <input
                             value={line.boxNo}
                             onChange={(e) => setLineField(idx, { boxNo: e.target.value })}
                             className={inputCls}
-                            placeholder="e.g. Box 1"
+                            placeholder="e.g. Bale 1"
                           />
                         </div>
 
