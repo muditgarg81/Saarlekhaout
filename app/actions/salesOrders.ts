@@ -277,3 +277,97 @@ export async function cancelSalesOrder(id: string, reason: string) {
     return { success: false, error: err.message || "Failed to cancel sales order" };
   }
 }
+
+export async function deleteSalesOrder(id: string) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const so = await db.salesOrder.findFirst({
+      where: { id, companyId, deletedAt: null },
+    });
+    if (!so) return { success: false, error: "Sales order not found" };
+    if (so.status !== SoStatus.DRAFT && so.status !== SoStatus.PENDING_APPROVAL) {
+      return { success: false, error: `Cannot delete order in ${so.status} state.` };
+    }
+
+    await db.$transaction(async (tx) => {
+      await tx.salesOrder.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+      await logAudit(tx, companyId, actorId, "DELETE", "SalesOrder", id, so, { deletedAt: new Date() });
+    });
+
+    revalidatePath("/sales/orders");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleting sales order:", err);
+    return { success: false, error: err.message || "Failed to delete sales order" };
+  }
+}
+
+export async function updateSalesOrder(id: string, data: z.infer<typeof soSchema>) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const validated = soSchema.parse(data);
+
+    const so = await db.salesOrder.findFirst({
+      where: { id, companyId, deletedAt: null },
+      include: { lines: true }
+    });
+    if (!so) return { success: false, error: "Sales order not found" };
+    if (so.status !== SoStatus.DRAFT && so.status !== SoStatus.PENDING_APPROVAL) {
+      return { success: false, error: `Cannot edit order in ${so.status} state.` };
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      await tx.soLine.deleteMany({
+        where: { soId: id }
+      });
+
+      const updated = await tx.salesOrder.update({
+        where: { id },
+        data: {
+          customerId: validated.customerId,
+          customerPoNo: validated.customerPoNo || null,
+          customerPoDate: validated.customerPoDate ? new Date(validated.customerPoDate) : null,
+          deliveryDate: validated.deliveryDate ? new Date(validated.deliveryDate) : null,
+          paymentTerms: validated.paymentTerms || null,
+          billingAddress: validated.billingAddress || null,
+          shippingAddress: validated.shippingAddress || null,
+          placeOfSupply: validated.placeOfSupply || null,
+          termsConditions: validated.termsConditions || null,
+          leadTime: validated.leadTime || null,
+          otherCharges: validated.otherCharges,
+          lines: {
+            create: validated.lines.map((l) => ({
+              itemId: l.itemId,
+              qty: l.qty,
+              rate: l.rate,
+              discount: l.discount,
+              gstRate: l.gstRate,
+              specification: l.specification || null,
+            })),
+          },
+        },
+        include: { lines: true }
+      });
+
+      await logAudit(tx, companyId, actorId, "UPDATE", "SalesOrder", id, so, updated);
+      return updated;
+    });
+
+    revalidatePath("/sales/orders");
+    return { success: true, salesOrder: result };
+  } catch (err: any) {
+    console.error("Error updating sales order:", err);
+    return { success: false, error: err.message || "Failed to update sales order" };
+  }
+}

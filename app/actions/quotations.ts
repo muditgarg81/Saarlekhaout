@@ -331,3 +331,95 @@ export async function convertToSalesOrder(id: string) {
     return { success: false, error: err.message || "Failed to convert quotation" };
   }
 }
+
+export async function deleteQuotation(id: string) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const q = await db.customerQuotation.findFirst({
+      where: { id, companyId, deletedAt: null },
+    });
+    if (!q) return { success: false, error: "Quotation not found" };
+    if (q.status !== QuotationStatus.DRAFT && q.status !== QuotationStatus.SENT) {
+      return { success: false, error: `Cannot delete quotation in ${q.status} state.` };
+    }
+
+    await db.$transaction(async (tx) => {
+      await tx.customerQuotation.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
+      await logAudit(tx, companyId, actorId, "DELETE", "CustomerQuotation", id, q, { deletedAt: new Date() });
+    });
+
+    revalidatePath("/sales/quotations");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleting quotation:", err);
+    return { success: false, error: err.message || "Failed to delete quotation" };
+  }
+}
+
+export async function updateQuotation(id: string, data: z.infer<typeof quotationSchema>) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const validated = quotationSchema.parse(data);
+
+    const q = await db.customerQuotation.findFirst({
+      where: { id, companyId, deletedAt: null },
+      include: { lines: true }
+    });
+    if (!q) return { success: false, error: "Quotation not found" };
+    if (q.status !== QuotationStatus.DRAFT && q.status !== QuotationStatus.SENT) {
+      return { success: false, error: `Cannot edit quotation in ${q.status} state.` };
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      await tx.customerQuotationLine.deleteMany({
+        where: { quotationId: id }
+      });
+
+      const updated = await tx.customerQuotation.update({
+        where: { id },
+        data: {
+          customerId: validated.customerId,
+          validUpto: validated.validUpto ? new Date(validated.validUpto) : null,
+          paymentTerms: validated.paymentTerms || null,
+          billingAddress: validated.billingAddress || null,
+          shippingAddress: validated.shippingAddress || null,
+          placeOfSupply: validated.placeOfSupply || null,
+          termsConditions: validated.termsConditions || null,
+          leadTime: validated.leadTime || null,
+          otherCharges: validated.otherCharges,
+          lines: {
+            create: validated.lines.map((l) => ({
+              itemId: l.itemId,
+              qty: l.qty,
+              rate: l.rate,
+              discount: l.discount,
+              gstRate: l.gstRate,
+              specification: l.specification || null,
+            })),
+          },
+        },
+        include: { lines: true }
+      });
+
+      await logAudit(tx, companyId, actorId, "UPDATE", "CustomerQuotation", id, q, updated);
+      return updated;
+    });
+
+    revalidatePath("/sales/quotations");
+    return { success: true, quotation: result };
+  } catch (err: any) {
+    console.error("Error updating quotation:", err);
+    return { success: false, error: err.message || "Failed to update quotation" };
+  }
+}

@@ -17,7 +17,7 @@ export default async function OrdersPage() {
     }),
     db.customer.findMany({
       where: { companyId, deletedAt: null, status: "APPROVED" },
-      select: { id: true, code: true, name: true, stateCode: true, paymentTerms: true },
+      select: { id: true, code: true, name: true, stateCode: true, paymentTerms: true, billingAddresses: true, shippingAddresses: true },
       orderBy: { name: "asc" },
     }),
     db.item.findMany({

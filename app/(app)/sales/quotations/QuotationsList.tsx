@@ -9,8 +9,10 @@ import {
   rejectQuotation,
   cancelQuotation,
   convertToSalesOrder,
+  deleteQuotation,
+  updateQuotation,
 } from "@/app/actions/quotations";
-import { Plus, X, Trash2, Send, Check, Ban, FileText, ShoppingCart, Eye, Download } from "lucide-react";
+import { Plus, X, Trash2, Send, Check, Ban, FileText, ShoppingCart, Eye, Download, Pencil } from "lucide-react";
 import { generatePDF } from "../pdfGenerator";
 import { can, SessionUser } from "@/lib/rbac";
 import { QuotationStatus } from "@prisma/client";
@@ -89,6 +91,7 @@ export default function QuotationsList({
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
+  const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen && !termsConditions) {
@@ -208,7 +211,7 @@ export default function QuotationsList({
   const submit = async () => {
     setLoading(true);
     setError(null);
-    const res = await createQuotation({
+    const payload = {
       customerId,
       validUpto: validUpto || null,
       paymentTerms: paymentTerms || null,
@@ -226,8 +229,13 @@ export default function QuotationsList({
           rate: Number(l.rate),
           discount: Number(l.discount),
           gstRate: Number(l.gstRate),
+          specification: l.specification || null,
         })),
-    });
+    };
+
+    const res = editingQuotationId
+      ? await updateQuotation(editingQuotationId, payload)
+      : await createQuotation(payload);
     setLoading(false);
     if (!res.success) {
       setError(res.error || "Failed to create quotation");
@@ -242,6 +250,7 @@ export default function QuotationsList({
     setPlaceOfSupply("");
     setTermsConditions(presetTerms || "");
     setLeadTime("");
+    setEditingQuotationId(null);
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
@@ -266,7 +275,19 @@ export default function QuotationsList({
         </div>
         {canCreate && (
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={() => {
+              setEditingQuotationId(null);
+              setCustomerId("");
+              setValidUpto("");
+              setPaymentTerms("");
+              setBillingAddress("");
+              setShippingAddress("");
+              setPlaceOfSupply("");
+              setTermsConditions(presetTerms || "");
+              setLeadTime("");
+              setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+              setIsOpen(true);
+            }}
             className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm"
           >
             <Plus size={16} /> New Quotation
@@ -305,6 +326,61 @@ export default function QuotationsList({
                     <button title="Review Details" onClick={() => setReviewQuotation(q)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
                       <Eye size={15} />
                     </button>
+                    {(q.status === "DRAFT" || q.status === "SENT") && canCreate && (
+                      <>
+                        <button
+                          title="Edit Quotation"
+                          onClick={() => {
+                            setEditingQuotationId(q.id);
+                            setCustomerId(q.customerId || "");
+                            setValidUpto(q.validUpto ? q.validUpto.slice(0, 10) : "");
+                            setPaymentTerms(q.paymentTerms || "");
+                            setBillingAddress(q.billingAddress || "");
+                            setShippingAddress(q.shippingAddress || "");
+                            setPlaceOfSupply(q.placeOfSupply || "");
+                            setTermsConditions(q.termsConditions || "");
+                            setLeadTime(q.leadTime || "");
+
+                            const cust = localCustomers.find((c) => c.id === q.customerId);
+                            if (cust) {
+                              const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
+                              const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
+                              setBillingAddressOptions(bAddresses);
+                              setShippingAddressOptions(sAddresses);
+                            } else {
+                              setBillingAddressOptions([]);
+                              setShippingAddressOptions([]);
+                            }
+
+                            setLines(q.lines?.map((l: any) => ({
+                              itemId: l.itemId,
+                              qty: l.qty,
+                              rate: l.rate,
+                              discount: l.discount,
+                              gstRate: l.gstRate,
+                              specification: l.specification || "",
+                            })) || []);
+                            setIsOpen(true);
+                          }}
+                          className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          title="Delete Quotation"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete quotation ${q.number}?`)) {
+                              const res = await deleteQuotation(q.id);
+                              if (!res.success) alert(res.error || "Failed to delete quotation");
+                              else router.refresh();
+                            }
+                          }}
+                          className="p-1.5 rounded hover:bg-red-50 text-red-600"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    )}
                     {q.status === "DRAFT" && canCreate && (
                       <button title="Submit for Approval" onClick={() => act(() => submitQuotation(q.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
                         <Send size={15} />
@@ -348,7 +424,9 @@ export default function QuotationsList({
         <div className="fixed inset-0 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
           <div className="bg-white border border-onyx/10 rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl p-6">
             <div className="flex justify-between items-center pb-4 border-b border-onyx/5 mb-6">
-              <h3 className="text-lg font-heading font-bold text-onyx">Generate Customer Quotation</h3>
+              <h3 className="text-lg font-heading font-bold text-onyx">
+                {editingQuotationId ? "Edit Customer Quotation" : "Generate Customer Quotation"}
+              </h3>
               <button onClick={() => setIsOpen(false)} className="text-onyx/40 hover:text-onyx hover:bg-cream-light p-1 rounded-lg">
                 <X size={18} />
               </button>
@@ -620,7 +698,7 @@ export default function QuotationsList({
                   disabled={loading || !customerId || lines.some(l => !l.itemId)}
                   className="px-4 py-2 bg-saffron hover:bg-saffron-dark text-onyx rounded-lg text-xs font-semibold disabled:opacity-50"
                 >
-                  {loading ? "Saving..." : "Create Quotation"}
+                  {loading ? "Saving..." : editingQuotationId ? "Update Quotation" : "Create Quotation"}
                 </button>
               </div>
             </div>

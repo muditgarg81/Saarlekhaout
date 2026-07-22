@@ -8,8 +8,10 @@ import {
   approveSalesOrder,
   rejectSalesOrder,
   cancelSalesOrder,
+  deleteSalesOrder,
+  updateSalesOrder,
 } from "@/app/actions/salesOrders";
-import { Plus, X, Trash2, Send, Check, Ban, ClipboardList, Eye, Download } from "lucide-react";
+import { Plus, X, Trash2, Send, Check, Ban, ClipboardList, Eye, Download, Pencil } from "lucide-react";
 import { generatePDF } from "../pdfGenerator";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
@@ -38,7 +40,7 @@ interface Order {
   otherCharges?: number;
   lines?: any[];
 }
-interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null }
+interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null; billingAddresses?: any; shippingAddresses?: any; billingAddress?: string | null; shippingAddress?: string | null; }
 interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null; specification: string | null }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -86,6 +88,13 @@ export default function OrdersList({
   const [termsConditions, setTermsConditions] = useState(presetTerms || "");
   const [leadTime, setLeadTime] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+  const [editingOrderId, setEditingOrderId] = useState<string | null>(null);
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [billingAddress, setBillingAddress] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
+  const [placeOfSupply, setPlaceOfSupply] = useState("");
+  const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
+  const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
 
   useEffect(() => {
     if (isOpen && !termsConditions) {
@@ -160,14 +169,52 @@ export default function OrdersList({
     setLine(i, { itemId, gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
+  const handleCustomerPick = (id: string) => {
+    setCustomerId(id);
+    const cust = localCustomers.find((c) => c.id === id);
+    if (cust) {
+      setPaymentTerms(cust.paymentTerms || "");
+      setPlaceOfSupply(cust.stateCode || "");
+      
+      const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
+      const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
+      
+      setBillingAddressOptions(bAddresses);
+      setShippingAddressOptions(sAddresses);
+
+      if (bAddresses.length > 0) {
+        setBillingAddress(bAddresses[0].address);
+      } else {
+        setBillingAddress(cust.billingAddress || "");
+      }
+
+      if (sAddresses.length > 0) {
+        setShippingAddress(sAddresses[0].address);
+      } else {
+        setShippingAddress(cust.shippingAddress || "");
+      }
+    } else {
+      setPaymentTerms("");
+      setPlaceOfSupply("");
+      setBillingAddressOptions([]);
+      setShippingAddressOptions([]);
+      setBillingAddress("");
+      setShippingAddress("");
+    }
+  };
+
   const submit = async () => {
     setLoading(true);
     setError(null);
-    const res = await createSalesOrder({
+    const payload = {
       customerId,
       type: "REGULAR" as any,
       customerPoNo: customerPoNo || null,
       deliveryDate: deliveryDate || null,
+      paymentTerms: paymentTerms || null,
+      billingAddress: billingAddress || null,
+      shippingAddress: shippingAddress || null,
+      placeOfSupply: placeOfSupply || null,
       termsConditions: termsConditions || null,
       leadTime: leadTime || null,
       otherCharges: 0,
@@ -179,8 +226,13 @@ export default function OrdersList({
           rate: Number(l.rate),
           discount: Number(l.discount),
           gstRate: Number(l.gstRate),
+          specification: l.specification || null,
         })),
-    } as any);
+    };
+
+    const res = editingOrderId
+      ? await updateSalesOrder(editingOrderId, payload as any)
+      : await createSalesOrder(payload as any);
     setLoading(false);
     if (!res.success) {
       setError(res.error || "Failed to create order");
@@ -190,8 +242,15 @@ export default function OrdersList({
     setCustomerId("");
     setCustomerPoNo("");
     setDeliveryDate("");
+    setPaymentTerms("");
+    setBillingAddress("");
+    setShippingAddress("");
+    setPlaceOfSupply("");
+    setBillingAddressOptions([]);
+    setShippingAddressOptions([]);
     setTermsConditions(presetTerms || "");
     setLeadTime("");
+    setEditingOrderId(null);
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
@@ -216,7 +275,16 @@ export default function OrdersList({
         </div>
         {canCreate && (
           <button
-            onClick={() => setIsOpen(true)}
+            onClick={() => {
+              setEditingOrderId(null);
+              setCustomerId("");
+              setCustomerPoNo("");
+              setDeliveryDate("");
+              setTermsConditions(presetTerms || "");
+              setLeadTime("");
+              setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+              setIsOpen(true);
+            }}
             className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm"
           >
             <Plus size={16} /> New Order
@@ -255,6 +323,62 @@ export default function OrdersList({
                     <button title="Review Details" onClick={() => setReviewOrder(o)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
                       <Eye size={15} />
                     </button>
+                    {(o.status === "DRAFT" || o.status === "PENDING_APPROVAL") && canCreate && (
+                      <>
+                        <button
+                          title="Edit Order"
+                          onClick={() => {
+                            setEditingOrderId(o.id);
+                            setCustomerId(o.customerId || "");
+                            setCustomerPoNo(o.customerPoNo || "");
+                            setDeliveryDate(o.deliveryDate ? o.deliveryDate.slice(0, 10) : "");
+                            setPaymentTerms(o.paymentTerms || "");
+                            setBillingAddress(o.billingAddress || "");
+                            setShippingAddress(o.shippingAddress || "");
+                            setPlaceOfSupply(o.placeOfSupply || "");
+                            setTermsConditions(o.termsConditions || "");
+                            setLeadTime(o.leadTime || "");
+                            
+                            const cust = localCustomers.find((c) => c.id === o.customerId);
+                            if (cust) {
+                              const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
+                              const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
+                              setBillingAddressOptions(bAddresses);
+                              setShippingAddressOptions(sAddresses);
+                            } else {
+                              setBillingAddressOptions([]);
+                              setShippingAddressOptions([]);
+                            }
+
+                            setLines(o.lines?.map((l: any) => ({
+                              itemId: l.itemId,
+                              qty: l.qty,
+                              rate: l.rate,
+                              discount: l.discount,
+                              gstRate: l.gstRate,
+                              specification: l.specification || "",
+                            })) || []);
+                            setIsOpen(true);
+                          }}
+                          className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          title="Delete Order"
+                          onClick={async () => {
+                            if (confirm(`Are you sure you want to delete sales order ${o.number}?`)) {
+                              const res = await deleteSalesOrder(o.id);
+                              if (!res.success) alert(res.error || "Failed to delete order");
+                              else router.refresh();
+                            }
+                          }}
+                          className="p-1.5 rounded hover:bg-red-50 text-red-600"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    )}
                     {o.status === "DRAFT" && canCreate && (
                       <button title="Submit" onClick={() => act(() => submitSalesOrder(o.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
                         <Send size={15} />
@@ -292,7 +416,9 @@ export default function OrdersList({
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-onyx/10 sticky top-0 bg-white">
-              <h2 className="font-heading font-bold text-onyx">New Sales Order</h2>
+              <h2 className="font-heading font-bold text-onyx">
+                {editingOrderId ? "Edit Sales Order" : "New Sales Order"}
+              </h2>
               <button onClick={() => setIsOpen(false)} className="text-onyx/40 hover:text-onyx"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
@@ -301,7 +427,7 @@ export default function OrdersList({
                   <SearchableSelect
                     options={localCustomers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                     value={customerId}
-                    onChange={(val) => setCustomerId(val)}
+                    onChange={(val) => handleCustomerPick(val)}
                     placeholder="Select Customer..."
                     onCreateOption={handleQuickCreateCustomer}
                   />
@@ -317,6 +443,87 @@ export default function OrdersList({
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Lead Time</label>
                   <input className={inputCls} placeholder="e.g. 2-3 Weeks" value={leadTime} onChange={(e) => setLeadTime(e.target.value)} />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Payment Terms</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 30 Days Net"
+                    value={paymentTerms}
+                    onChange={(e) => setPaymentTerms(e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Place of Supply (State Code)</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 27"
+                    value={placeOfSupply}
+                    onChange={(e) => setPlaceOfSupply(e.target.value)}
+                    className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Billing Address</label>
+                  {billingAddressOptions.length > 0 && (
+                    <select
+                      className="w-full text-xs px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron mb-2"
+                      onChange={(e) => {
+                        const selected = billingAddressOptions.find(o => o.id === e.target.value);
+                        if (selected) {
+                          setBillingAddress(selected.address);
+                          if (selected.stateCode) {
+                            setPlaceOfSupply(selected.stateCode);
+                          }
+                        }
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Select Billing Address...</option>
+                      {billingAddressOptions.map(opt => (
+                        <option key={opt.id} value={opt.id}>{opt.label}: {opt.address.slice(0, 40)}...</option>
+                      ))}
+                    </select>
+                  )}
+                  <textarea
+                    value={billingAddress}
+                    onChange={(e) => setBillingAddress(e.target.value)}
+                    rows={2}
+                    className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                  />
+                </div>
+
+                <div className="col-span-2">
+                  <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Shipping Address</label>
+                  {shippingAddressOptions.length > 0 && (
+                    <select
+                      className="w-full text-xs px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron mb-2"
+                      onChange={(e) => {
+                        const selected = shippingAddressOptions.find(o => o.id === e.target.value);
+                        if (selected) {
+                          setShippingAddress(selected.address);
+                        }
+                      }}
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Select Shipping Address...</option>
+                      {shippingAddressOptions.map(opt => (
+                        <option key={opt.id} value={opt.id}>{opt.label}: {opt.address.slice(0, 40)}...</option>
+                      ))}
+                    </select>
+                  )}
+                  <textarea
+                    value={shippingAddress}
+                    onChange={(e) => setShippingAddress(e.target.value)}
+                    rows={2}
+                    className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                  />
                 </div>
               </div>
 
@@ -418,7 +625,7 @@ export default function OrdersList({
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-onyx/10">
               <button onClick={() => setIsOpen(false)} className="px-4 py-2 text-sm text-onyx/60">Cancel</button>
               <button onClick={submit} disabled={loading || !customerId} className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold rounded-lg text-sm disabled:opacity-50">
-                {loading ? "Creating…" : "Create order"}
+                {loading ? "Saving…" : editingOrderId ? "Update Order" : "Create order"}
               </button>
             </div>
           </div>
@@ -550,7 +757,7 @@ export default function OrdersList({
               </div>
               <div className="flex gap-2 justify-end">
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     const linesWithNames = reviewOrder.lines?.map((l: any) => {
                       const item = itemById.get(l.itemId);
                       return {
@@ -558,7 +765,7 @@ export default function OrdersList({
                         itemName: item ? `${item.name} (${item.code})` : "Unknown Item"
                       };
                     });
-                    generatePDF("Sales Order", { ...reviewOrder, lines: linesWithNames }, company);
+                    await generatePDF("Sales Order", { ...reviewOrder, lines: linesWithNames }, company);
                   }}
                   className="px-4 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm"
                 >
