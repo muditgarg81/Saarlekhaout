@@ -25,9 +25,16 @@ interface NumberingData {
   resetOnFY: boolean;
 }
 
+interface DocSequenceData {
+  id: string;
+  docType: string;
+  nextValue: number;
+}
+
 interface DocSettingsFormProps {
   initialSettings: DocSettingsData;
   initialSchemes: NumberingData[];
+  initialSequences?: DocSequenceData[];
   userPermissions: {
     docSettings: boolean;
     numbering: boolean;
@@ -48,6 +55,7 @@ const DOC_TYPES = [
 export default function DocSettingsForm({
   initialSettings,
   initialSchemes,
+  initialSequences = [],
   userPermissions,
 }: DocSettingsFormProps) {
   // Document PDF text states
@@ -68,13 +76,15 @@ export default function DocSettingsForm({
   });
 
   // Schemes states
-  const [schemes, setSchemes] = useState<Record<string, { prefix: string; padding: number; resetOnFY: boolean }>>(
+  const [schemes, setSchemes] = useState<Record<string, { prefix: string; padding: number; resetOnFY: boolean; nextValue: number }>>(
     DOC_TYPES.reduce((acc, dt) => {
       const match = initialSchemes.find((s) => s.docType === dt.type);
+      const seqMatch = initialSequences.find((s) => s.docType === dt.type);
       acc[dt.type] = {
         prefix: match?.prefix || `${dt.type}-`,
         padding: match?.padding || 5,
         resetOnFY: match?.resetOnFY !== undefined ? match.resetOnFY : true,
+        nextValue: seqMatch?.nextValue || 1,
       };
       return acc;
     }, {} as any)
@@ -119,6 +129,7 @@ export default function DocSettingsForm({
         prefix: scheme.prefix,
         padding: Number(scheme.padding),
         resetOnFY: scheme.resetOnFY,
+        nextValue: Number(scheme.nextValue),
       });
       setMsg({ type: "success", text: `Numbering format for ${docType} updated successfully!` });
     } catch (err: any) {
@@ -349,6 +360,20 @@ export default function DocSettingsForm({
                           className="w-full text-[11px] p-1 border border-onyx/10 bg-cream rounded font-mono text-center"
                           min={2}
                           max={8}
+                        />
+                      </div>
+
+                      <div className="w-16">
+                        <label className="block text-[8px] uppercase font-bold text-onyx/40 mb-0.5">Next Num</label>
+                        <input
+                          type="number"
+                          value={s.nextValue}
+                          onChange={(e) => setSchemes(prev => ({
+                            ...prev,
+                            [dt.type]: { ...prev[dt.type], nextValue: Math.max(1, Number(e.target.value) || 1) }
+                          }))}
+                          className="w-full text-[11px] p-1 border border-onyx/10 bg-cream rounded font-mono text-center"
+                          min={1}
                         />
                       </div>
 

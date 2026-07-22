@@ -209,6 +209,7 @@ export async function upsertNumberingScheme(data: {
   prefix: string;
   padding: number;
   resetOnFY: boolean;
+  nextValue?: number;
 }) {
   const session = await auth();
   if (!can(session?.user as any, "numbering.config")) {
@@ -238,6 +239,25 @@ export async function upsertNumberingScheme(data: {
       resetOnFY: data.resetOnFY,
     },
   });
+
+  if (data.nextValue !== undefined) {
+    await db.docSequence.upsert({
+      where: {
+        companyId_docType: {
+          companyId,
+          docType: data.docType,
+        },
+      },
+      update: {
+        nextValue: data.nextValue,
+      },
+      create: {
+        companyId,
+        docType: data.docType,
+        nextValue: data.nextValue,
+      },
+    });
+  }
 
   // Log action
   await db.auditLog.create({

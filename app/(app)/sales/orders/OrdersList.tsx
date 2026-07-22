@@ -326,60 +326,60 @@ export default function OrdersList({
                       <Eye size={15} />
                     </button>
                     {(o.status === "DRAFT" || o.status === "PENDING_APPROVAL" || o.status === "CONFIRMED") && canCreate && (
-                      <>
-                        <button
-                          title="Edit Order"
-                          onClick={() => {
-                            setEditingOrderId(o.id);
-                            setCustomerId(o.customerId || "");
-                            setCustomerPoNo(o.customerPoNo || "");
-                            setDeliveryDate(o.deliveryDate ? o.deliveryDate.slice(0, 10) : "");
-                            setPaymentTerms(o.paymentTerms || "");
-                            setBillingAddress(o.billingAddress || "");
-                            setShippingAddress(o.shippingAddress || "");
-                            setPlaceOfSupply(o.placeOfSupply || "");
-                            setTermsConditions(o.termsConditions || "");
-                            setLeadTime(o.leadTime || "");
-                            
-                            const cust = localCustomers.find((c) => c.id === o.customerId);
-                            if (cust) {
-                              const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
-                              const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
-                              setBillingAddressOptions(bAddresses);
-                              setShippingAddressOptions(sAddresses);
-                            } else {
-                              setBillingAddressOptions([]);
-                              setShippingAddressOptions([]);
-                            }
+                      <button
+                        title="Edit Order"
+                        onClick={() => {
+                          setEditingOrderId(o.id);
+                          setCustomerId(o.customerId || "");
+                          setCustomerPoNo(o.customerPoNo || "");
+                          setDeliveryDate(o.deliveryDate ? o.deliveryDate.slice(0, 10) : "");
+                          setPaymentTerms(o.paymentTerms || "");
+                          setBillingAddress(o.billingAddress || "");
+                          setShippingAddress(o.shippingAddress || "");
+                          setPlaceOfSupply(o.placeOfSupply || "");
+                          setTermsConditions(o.termsConditions || "");
+                          setLeadTime(o.leadTime || "");
+                          
+                          const cust = localCustomers.find((c) => c.id === o.customerId);
+                          if (cust) {
+                            const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
+                            const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
+                            setBillingAddressOptions(bAddresses);
+                            setShippingAddressOptions(sAddresses);
+                          } else {
+                            setBillingAddressOptions([]);
+                            setShippingAddressOptions([]);
+                          }
 
-                            setLines(o.lines?.map((l: any) => ({
-                              itemId: l.itemId,
-                              qty: l.qty,
-                              rate: l.rate,
-                              discount: l.discount,
-                              gstRate: l.gstRate,
-                              specification: l.specification || "",
-                            })) || []);
-                            setIsOpen(true);
-                          }}
-                          className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          title="Delete Order"
-                          onClick={async () => {
-                            if (confirm(`Are you sure you want to delete sales order ${o.number}?`)) {
-                              const res = await deleteSalesOrder(o.id);
-                              if (!res.success) alert(res.error || "Failed to delete order");
-                              else router.refresh();
-                            }
-                          }}
-                          className="p-1.5 rounded hover:bg-red-50 text-red-600"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </>
+                          setLines(o.lines?.map((l: any) => ({
+                            itemId: l.itemId,
+                            qty: l.qty,
+                            rate: l.rate,
+                            discount: l.discount,
+                            gstRate: l.gstRate,
+                            specification: l.specification || "",
+                          })) || []);
+                          setIsOpen(true);
+                        }}
+                        className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
+                    {(o.status === "DRAFT" || o.status === "PENDING_APPROVAL") && canCreate && (
+                      <button
+                        title="Delete Order"
+                        onClick={async () => {
+                          if (confirm(`Are you sure you want to delete sales order ${o.number}?`)) {
+                            const res = await deleteSalesOrder(o.id);
+                            if (!res.success) alert(res.error || "Failed to delete order");
+                            else router.refresh();
+                          }
+                        }}
+                        className="p-1.5 rounded hover:bg-red-50 text-red-600"
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     )}
                     {o.status === "DRAFT" && canCreate && (
                       <button title="Submit" onClick={() => act(() => submitSalesOrder(o.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">

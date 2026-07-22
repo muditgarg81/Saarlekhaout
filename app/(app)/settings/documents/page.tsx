@@ -41,15 +41,21 @@ export default async function DocSettingsPage() {
     });
   }
 
-  // Fetch numbering schemes
-  const numberingSchemes = await db.numberingScheme.findMany({
-    where: { companyId: user.companyId },
-  });
+  // Fetch numbering schemes and doc sequences
+  const [numberingSchemes, docSequences] = await Promise.all([
+    db.numberingScheme.findMany({
+      where: { companyId: user.companyId },
+    }),
+    db.docSequence.findMany({
+      where: { companyId: user.companyId },
+    }),
+  ]);
 
   return (
     <DocSettingsForm
       initialSettings={JSON.parse(JSON.stringify(docSettings))}
       initialSchemes={JSON.parse(JSON.stringify(numberingSchemes))}
+      initialSequences={JSON.parse(JSON.stringify(docSequences))}
       userPermissions={{
         docSettings: can(user, "company.settings.edit"),
         numbering: can(user, "numbering.config"),
