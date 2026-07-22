@@ -9,7 +9,8 @@ import {
   rejectSalesOrder,
   cancelSalesOrder,
 } from "@/app/actions/salesOrders";
-import { Plus, X, Trash2, Send, Check, Ban, ClipboardList, Eye } from "lucide-react";
+import { Plus, X, Trash2, Send, Check, Ban, ClipboardList, Eye, Download } from "lucide-react";
+import { generatePDF } from "../pdfGenerator";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
@@ -59,6 +60,7 @@ export default function OrdersList({
   items,
   termsTemplates,
   presetTerms,
+  company,
   user,
 }: {
   initialOrders: Order[];
@@ -66,10 +68,11 @@ export default function OrdersList({
   items: ItemOpt[];
   termsTemplates: any[];
   presetTerms: string;
+  company: any;
   user: SessionUser;
 }) {
   const router = useRouter();
-  const [orders] = useState<Order[]>(initialOrders);
+  const orders = initialOrders;
   const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
   const [localCustomers, setLocalCustomers] = useState<CustomerOpt[]>(customers);
   const [isOpen, setIsOpen] = useState(false);
@@ -530,6 +533,23 @@ export default function OrdersList({
                 Grand Total: <span className="text-saffron-dark font-bold text-base">₹{reviewOrder.value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
               </div>
               <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => {
+                    const linesWithNames = reviewOrder.lines?.map((l: any) => {
+                      const item = itemById.get(l.itemId);
+                      return {
+                        ...l,
+                        itemName: item ? `${item.name} (${item.code})` : "Unknown Item"
+                      };
+                    });
+                    generatePDF("Sales Order", { ...reviewOrder, lines: linesWithNames }, company);
+                  }}
+                  className="px-4 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm"
+                >
+                  <Download size={14} />
+                  <span>Download PDF</span>
+                </button>
+
                 {/* Pending Approval Admin Review Actions */}
                 {reviewOrder.status === "PENDING_APPROVAL" && canApprove && (
                   <>
