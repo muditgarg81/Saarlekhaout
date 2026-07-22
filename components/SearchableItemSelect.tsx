@@ -12,6 +12,7 @@ interface SearchableItemSelectProps {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
+  onCreateItem?: (name: string) => Promise<Item | null>;
 }
 
 export function SearchableItemSelect({
@@ -19,6 +20,7 @@ export function SearchableItemSelect({
   value,
   onChange,
   placeholder = "Select Item",
+  onCreateItem,
 }: SearchableItemSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -102,9 +104,42 @@ export function SearchableItemSelect({
 
           {/* Items List */}
           <div className="overflow-y-auto py-1 max-h-56">
+            {onCreateItem && searchQuery.trim().length >= 2 && (
+              <div
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  const newItem = await onCreateItem(searchQuery.trim());
+                  if (newItem) {
+                    onChange(newItem.id);
+                    setIsOpen(false);
+                  }
+                }}
+                className="px-3 py-2 text-xs cursor-pointer text-saffron-dark hover:bg-cream-dark/20 font-bold border-b border-onyx/5 flex items-center gap-1.5 transition-colors duration-100"
+              >
+                <span>+ Create item:</span>
+                <span className="italic text-onyx/70 truncate">"{searchQuery.trim()}"</span>
+              </div>
+            )}
+
             {filteredItems.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-onyx/40 text-center font-medium">
-                No items found
+              <div className="px-3 py-4 text-xs text-onyx/40 text-center font-medium flex flex-col items-center">
+                <span>No items found</span>
+                {onCreateItem && searchQuery.trim().length >= 2 && (
+                  <button
+                    type="button"
+                    onClick={async (e) => {
+                      e.stopPropagation();
+                      const newItem = await onCreateItem(searchQuery.trim());
+                      if (newItem) {
+                        onChange(newItem.id);
+                        setIsOpen(false);
+                      }
+                    }}
+                    className="mt-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold py-1.5 px-3 rounded-lg text-xs transition duration-150 shadow-sm"
+                  >
+                    + Create "{searchQuery.trim()}"
+                  </button>
+                )}
               </div>
             ) : (
               filteredItems.map((item) => (

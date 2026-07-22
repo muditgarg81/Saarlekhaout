@@ -7,6 +7,7 @@ import { Plus, X, Trash2, Boxes, FileText, Scale } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
+import { quickCreateItem } from "@/app/actions/items";
 
 interface PackingListRow {
   id: string;
@@ -75,6 +76,7 @@ export default function PackingListsClient({
 }) {
   const router = useRouter();
   const [packingLists] = useState<PackingListRow[]>(initialPackingLists);
+  const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -86,6 +88,23 @@ export default function PackingListsClient({
   ]);
 
   const canCreate = can(user, "dispatch.create") || ["ADMIN", "OWNER", "STORE_MANAGER"].includes(user.role);
+
+  const handleQuickCreateItem = async (name: string) => {
+    const res = await quickCreateItem({ name });
+    if (res.success && res.item) {
+      const newItem: ItemOpt = {
+        id: res.item.id,
+        code: res.item.code,
+        name: res.item.name,
+      };
+      setLocalItems((prev) => [...prev, newItem]);
+      router.refresh();
+      return newItem;
+    } else {
+      alert(res.error || "Failed to create item");
+      return null;
+    }
+  };
 
   const handleSoPick = (id: string) => {
     setSoId(id);
@@ -308,10 +327,11 @@ export default function PackingListsClient({
                         </td>
                         <td className="px-3 py-1.5">
                           <SearchableItemSelect
-                            items={items.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
+                            items={localItems.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
                             value={l.itemId}
                             onChange={(val) => updateLine(idx, { itemId: val })}
                             placeholder="Select item..."
+                            onCreateItem={handleQuickCreateItem}
                           />
                         </td>
                         <td className="px-3 py-1.5">

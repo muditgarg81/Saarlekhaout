@@ -13,6 +13,7 @@ import { Plus, X, Trash2, Send, Check, Ban, ClipboardList } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
+import { quickCreateItem } from "@/app/actions/items";
 
 interface Order {
   id: string;
@@ -56,6 +57,7 @@ export default function OrdersList({
 }) {
   const router = useRouter();
   const [orders] = useState<Order[]>(initialOrders);
+  const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -67,9 +69,28 @@ export default function OrdersList({
   const canCreate = can(user, "so.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "so.approve") || ["ADMIN", "OWNER"].includes(user.role);
 
-  const itemById = new Map(items.map((i) => [i.id, i]));
+  const itemById = new Map(localItems.map((i) => [i.id, i]));
   const lineTotal = (l: Line) => l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100);
   const orderTotal = lines.reduce((s, l) => s + lineTotal(l), 0);
+
+  const handleQuickCreateItem = async (name: string) => {
+    const res = await quickCreateItem({ name });
+    if (res.success && res.item) {
+      const newItem: ItemOpt = {
+        id: res.item.id,
+        code: res.item.code,
+        name: res.item.name,
+        baseUom: res.item.baseUom,
+        gstRate: res.item.gstRate,
+      };
+      setLocalItems((prev) => [...prev, newItem]);
+      router.refresh();
+      return newItem;
+    } else {
+      alert(res.error || "Failed to create item");
+      return null;
+    }
+  };
 
   const addLine = () => setLines([...lines, { itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
@@ -247,10 +268,11 @@ export default function OrdersList({
                       <tr key={i} className="border-t border-onyx/5">
                         <td className="px-2 py-1">
                           <SearchableItemSelect
-                            items={items.map((it) => ({ id: it.id, code: it.code, name: it.name }))}
+                            items={localItems.map((it) => ({ id: it.id, code: it.code, name: it.name }))}
                             value={l.itemId}
                             onChange={(val) => onItemPick(i, val)}
                             placeholder="Select Item..."
+                            onCreateItem={handleQuickCreateItem}
                           />
                         </td>
                         <td className="px-2 py-1"><input type="number" className={cellCls} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} /></td>

@@ -15,6 +15,7 @@ import { can, SessionUser } from "@/lib/rbac";
 import { QuotationStatus } from "@prisma/client";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
+import { quickCreateItem } from "@/app/actions/items";
 
 interface Quotation {
   id: string;
@@ -54,6 +55,7 @@ export default function QuotationsList({
 }) {
   const router = useRouter();
   const [quotations] = useState<Quotation[]>(initialQuotations);
+  const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -71,9 +73,28 @@ export default function QuotationsList({
   const canCreate = can(user, "quotation.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "quotation.approve") || ["ADMIN", "OWNER"].includes(user.role);
 
-  const itemById = new Map(items.map((i) => [i.id, i]));
+  const itemById = new Map(localItems.map((i) => [i.id, i]));
   const lineTotal = (l: Line) => l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100);
   const quotationTotal = lines.reduce((s, l) => s + lineTotal(l), 0);
+
+  const handleQuickCreateItem = async (name: string) => {
+    const res = await quickCreateItem({ name });
+    if (res.success && res.item) {
+      const newItem: ItemOpt = {
+        id: res.item.id,
+        code: res.item.code,
+        name: res.item.name,
+        baseUom: res.item.baseUom,
+        gstRate: res.item.gstRate,
+      };
+      setLocalItems((prev) => [...prev, newItem]);
+      router.refresh();
+      return newItem;
+    } else {
+      alert(res.error || "Failed to create item");
+      return null;
+    }
+  };
 
   const addLine = () => setLines([...lines, { itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18 }]);
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
@@ -380,10 +401,11 @@ export default function QuotationsList({
                   <div key={idx} className="flex items-center gap-3 border border-onyx/5 p-3 rounded-lg bg-cream-light/10">
                     <div className="flex-1 min-w-[200px]">
                       <SearchableItemSelect
-                        items={items.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
+                        items={localItems.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
                         value={l.itemId}
                         onChange={(val) => onItemPick(idx, val)}
                         placeholder="Pick Item"
+                        onCreateItem={handleQuickCreateItem}
                       />
                     </div>
 

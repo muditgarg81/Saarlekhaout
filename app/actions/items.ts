@@ -907,3 +907,61 @@ export async function getItemStockLogs(
   }
 }
 
+export async function quickCreateItem(data: { name: string; gstRate?: number; baseUom?: string }) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const name = data.name.trim();
+    if (!name || name.length < 2) {
+      return { success: false, error: "Item name must be at least 2 characters" };
+    }
+
+    const code = await generateNextItemCode(companyId, "ITEM");
+
+    // Check for uniqueness
+    const exists = await db.item.findFirst({
+      where: { companyId, code }
+    });
+    if (exists) {
+      return { success: false, error: `Item code '${code}' already exists` };
+    }
+
+    const newItem = await db.$transaction(async (tx) => {
+      const created = await tx.item.create({
+        data: {
+          name,
+          code,
+          type: ItemType.FINISHED_GOOD,
+          baseUom: data.name.includes("KG") || data.baseUom?.trim() === "KG" ? "KG" : "PCS",
+          gstRate: data.gstRate ?? 18,
+          valuation: ValuationMethod.WEIGHTED_AVG,
+          companyId,
+          status: MasterStatus.ACTIVE,
+        }
+      });
+
+      await logAudit(
+        tx,
+        companyId,
+        actorId,
+        "CREATE",
+        "Item",
+        created.id,
+        null,
+        created
+      );
+
+      return created;
+    });
+
+    revalidatePath("/stores/items");
+    return { success: true, item: newItem };
+  } catch (e: any) {
+    return { success: false, error: e.message || "Failed to quick create item" };
+  }
+}
+
