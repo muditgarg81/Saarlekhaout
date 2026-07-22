@@ -346,11 +346,69 @@ export async function deleteDispatch(dispatchId: string) {
       where: { id: dispatchId, companyId, deletedAt: null },
     });
     if (!dispatch) return { success: false, error: "Dispatch not found" };
-    if (dispatch.status !== DispatchStatus.DRAFT) {
-      return { success: false, error: "Only draft dispatches can be deleted" };
-    }
 
     await db.$transaction(async (tx) => {
+      // 1. If not draft (DISPATCHED or DELIVERED), roll back stocks and SO quantities
+      if (dispatch.status !== DispatchStatus.DRAFT) {
+        // Find dispatch lines
+        const lines = await tx.dispatchLine.findMany({
+          where: { dispatchId },
+        });
+
+        // Restore SO lines dispatchedQty and status
+        for (const dl of lines) {
+          if (dl.soLineId) {
+            const sol = await tx.soLine.findUnique({ where: { id: dl.soLineId } });
+            if (sol) {
+              const newDispatched = Math.max(0, sol.dispatchedQty - dl.qty);
+              await tx.soLine.update({
+                where: { id: sol.id },
+                data: {
+                  dispatchedQty: newDispatched,
+                  status: newDispatched <= 0 ? SoLineStatus.OPEN : (newDispatched >= sol.qty - 1e-9 ? SoLineStatus.DISPATCHED : SoLineStatus.PARTIALLY_DISPATCHED),
+                },
+              });
+            }
+          }
+        }
+
+        // Roll back Sales Order status
+        if (dispatch.soId) {
+          const so = await tx.salesOrder.findUnique({
+            where: { id: dispatch.soId },
+            include: { lines: true },
+          });
+          if (so) {
+            const allDispatched = so.lines.every((l: any) => l.dispatchedQty >= l.qty - 1e-9);
+            const anyDispatched = so.lines.some((l: any) => l.dispatchedQty > 0);
+            const newSoStatus = allDispatched ? SoStatus.DISPATCHED : (anyDispatched ? SoStatus.PARTIALLY_DISPATCHED : SoStatus.CONFIRMED);
+            await tx.salesOrder.update({
+              where: { id: so.id },
+              data: { status: newSoStatus },
+            });
+          }
+        }
+
+        // Delete Stock Ledger entries for this dispatch
+        await tx.stockLedger.deleteMany({
+          where: { refType: "DISPATCH", refId: dispatchId },
+        });
+
+        // Delete or cancel associated SalesInvoice if it is still a DRAFT
+        const assocInvoice = await tx.salesInvoice.findFirst({
+          where: { dispatchId, deletedAt: null },
+        });
+        if (assocInvoice) {
+          if (assocInvoice.status === "DRAFT") {
+            // Delete invoice lines and invoice
+            await tx.salesInvoiceLine.deleteMany({ where: { invoiceId: assocInvoice.id } });
+            await tx.salesInvoice.delete({ where: { id: assocInvoice.id } });
+          } else {
+            throw new Error(`Cannot delete dispatch because Tax Invoice ${assocInvoice.number} has already been raised/issued.`);
+          }
+        }
+      }
+
       if (dispatch.packingListId) {
         await tx.packingList.update({
           where: { id: dispatch.packingListId },
@@ -370,6 +428,7 @@ export async function deleteDispatch(dispatchId: string) {
     });
 
     revalidatePath("/sales/dispatch");
+    revalidatePath("/sales/orders");
     return { success: true };
   } catch (err: any) {
     console.error("Error deleting dispatch:", err);
@@ -401,9 +460,6 @@ export async function updateDispatch(
       where: { id: dispatchId, companyId, deletedAt: null },
     });
     if (!dispatch) return { success: false, error: "Dispatch not found" };
-    if (dispatch.status !== DispatchStatus.DRAFT) {
-      return { success: false, error: "Only draft dispatches can be updated" };
-    }
 
     const updated = await db.$transaction(async (tx) => {
       const u = await tx.dispatch.update({

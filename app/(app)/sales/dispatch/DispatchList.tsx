@@ -240,48 +240,53 @@ export default function DispatchList({
                         <Printer size={15} />
                       </button>
                     )}
+                    {canDispatch && (
+                      <button
+                        title="Edit Details"
+                        onClick={() => {
+                          setEditingDispatchId(d.id);
+                          setSoId(d.soNumber || "");
+                          setPackingListId(d.packingListNumber || "");
+                          setStoreId(d.storeId || "");
+                          setVehicleNo(d.vehicleNo || "");
+                          setTransporterName(d.transporterName || "");
+                          setLrNo(d.lrNo || "");
+                          setDistanceKm(d.distanceKm || 0);
+                          setIsOpen(true);
+                        }}
+                        className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70 cursor-pointer"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
                     {d.status === "DRAFT" && canDispatch && (
-                      <>
-                        <button
-                          title="Edit Dispatch"
-                          onClick={() => {
-                            setEditingDispatchId(d.id);
-                            setSoId(d.soNumber || "");
-                            setPackingListId(d.packingListNumber || "");
-                            setStoreId(d.storeId || "");
-                            setVehicleNo(d.vehicleNo || "");
-                            setTransporterName(d.transporterName || "");
-                            setLrNo(d.lrNo || "");
-                            setDistanceKm(d.distanceKm || 0);
-                            setIsOpen(true);
-                          }}
-                          className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          title="Post / Confirm Dispatch"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to post dispatch challan ${d.number}? This will update stock levels and Sales Order fulfillment.`)) {
-                              act(() => postDispatch(d.id));
-                            }
-                          }}
-                          className="p-1.5 rounded hover:bg-green-50 text-green-600"
-                        >
-                          <Send size={15} />
-                        </button>
-                        <button
-                          title="Delete Draft"
-                          onClick={() => {
-                            if (confirm(`Are you sure you want to delete draft dispatch ${d.number}? The linked packing list status will revert to DRAFT.`)) {
-                              act(() => deleteDispatch(d.id));
-                            }
-                          }}
-                          className="p-1.5 rounded hover:bg-red-50 text-red-600"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </>
+                      <button
+                        title="Post / Confirm Dispatch"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to post dispatch challan ${d.number}? This will update stock levels and Sales Order fulfillment.`)) {
+                            act(() => postDispatch(d.id));
+                          }
+                        }}
+                        className="p-1.5 rounded hover:bg-green-50 text-green-600 cursor-pointer"
+                      >
+                        <Send size={15} />
+                      </button>
+                    )}
+                    {canDispatch && (
+                      <button
+                        title="Delete Dispatch"
+                        onClick={() => {
+                          const msg = d.status === "DRAFT"
+                            ? `Are you sure you want to delete draft dispatch ${d.number}? The linked packing list status will revert to DRAFT.`
+                            : `Warning: Deleting dispatch challan ${d.number} will roll back inventory stock issue, restore Sales Order balance, and delete the associated draft invoice. Are you sure you want to delete this dispatch?`;
+                          if (confirm(msg)) {
+                            act(() => deleteDispatch(d.id));
+                          }
+                        }}
+                        className="p-1.5 rounded hover:bg-red-50 text-red-600 cursor-pointer"
+                      >
+                        <Trash2 size={15} />
+                      </button>
                     )}
                     {canEway && ["PENDING"].includes(d.ewayBillStatus) && (
                       <button title="Generate e-way bill" onClick={() => act(() => generateEWayBill(d.id))} className="p-1.5 rounded hover:bg-green-50 text-green-600">
