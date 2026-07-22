@@ -12,7 +12,7 @@ export default async function OrdersPage() {
     db.salesOrder.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      include: { customer: { select: { name: true, code: true } }, lines: true },
+      include: { customer: { select: { name: true, code: true, gstin: true, pan: true } }, lines: true },
       take: 200,
     }),
     db.customer.findMany({
@@ -35,7 +35,7 @@ export default async function OrdersPage() {
     }),
     db.company.findUnique({
       where: { id: companyId },
-      select: { name: true, address: true, gstin: true, pan: true, cin: true, contactEmail: true, contactPhone: true },
+      select: { name: true, address: true, gstin: true, pan: true, cin: true, contactEmail: true, contactPhone: true, city: true, governingPlace: true },
     }),
   ]);
 
@@ -44,6 +44,8 @@ export default async function OrdersPage() {
     number: o.number,
     customerId: o.customerId,
     customer: `${o.customer.name} (${o.customer.code})`,
+    customerGstin: o.customer.gstin,
+    customerPan: o.customer.pan,
     type: o.type,
     status: o.status,
     orderDate: o.orderDate.toISOString(),

@@ -4,7 +4,9 @@ import autoTable from "jspdf-autotable";
 function loadImage(url: string): Promise<HTMLImageElement | null> {
   return new Promise((resolve) => {
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    if (url.startsWith("http") && !url.startsWith(window.location.origin)) {
+      img.crossOrigin = "anonymous";
+    }
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = url;
@@ -71,7 +73,14 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
   doc.setFont("helvetica", "normal");
   doc.setFontSize(8);
   doc.setTextColor(80, 80, 80);
-  doc.text(company?.address || "Address not configured.", startX, 24.5, { maxWidth: startX === 14 ? 110 : 80 });
+  
+  const companyFullAddress = [
+    company?.address,
+    company?.city,
+    company?.governingPlace
+  ].filter(Boolean).join(", ");
+
+  doc.text(companyFullAddress || "Address not configured.", startX, 24.5, { maxWidth: startX === 14 ? 110 : 80 });
   
   const detailsY = startX === 14 ? 35 : 36;
   doc.text(`GSTIN: ${company?.gstin || "N/A"} | PAN: ${company?.pan || "N/A"}`, startX, detailsY);
@@ -114,12 +123,13 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
   doc.text(`Payment Terms: ${data.paymentTerms || "N/A"}`, 14, 62);
   doc.text(`Place of Supply: ${data.placeOfSupply || "N/A"}`, 14, 67);
   doc.text(`Lead Time: ${data.leadTime || "N/A"}`, 14, 72);
+  doc.text(`GSTIN: ${data.customerGstin || "N/A"} | PAN: ${data.customerPan || "N/A"}`, 14, 77);
   
   doc.setFont("helvetica", "bold");
   doc.text("BILLING & SHIPPING ADDRESS", 110, 52);
   doc.setFont("helvetica", "normal");
   doc.text(`Billing: ${data.billingAddress || "N/A"}`, 110, 57, { maxWidth: 85 });
-  doc.text(`Shipping: ${data.shippingAddress || "N/A"}`, 110, 70, { maxWidth: 85 });
+  doc.text(`Shipping: ${data.shippingAddress || "N/A"}`, 110, 72, { maxWidth: 85 });
   
   // 3. Line Items Table using autoTable
   const headers = [["#", "Item Description", "Qty", "Basic Price", "Disc %", "GST %", "Total (INR)"]];
@@ -138,7 +148,7 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
   });
   
   autoTable(doc, {
-    startY: 85,
+    startY: 88,
     head: headers,
     body: rows,
     theme: "striped",
@@ -185,10 +195,21 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
     doc.text("TERMS & CONDITIONS", 14, finalY + 15);
+    
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.setTextColor(80, 80, 80);
-    doc.text(data.termsConditions, 14, finalY + 20, { maxWidth: 180 });
+    
+    const lines = doc.splitTextToSize(data.termsConditions, 180);
+    let termsY = finalY + 21;
+    lines.forEach((line: string) => {
+      if (termsY > 280) {
+        doc.addPage();
+        termsY = 20;
+      }
+      doc.text(line, 14, termsY);
+      termsY += 5.5; 
+    });
   }
   
   // Save/Download PDF

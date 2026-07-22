@@ -26,6 +26,8 @@ interface Quotation {
   number: string;
   customerId?: string;
   customer: string;
+  customerGstin?: string | null;
+  customerPan?: string | null;
   status: string;
   quotationDate: string;
   validUpto: string | null;
@@ -735,7 +737,14 @@ export default function QuotationsList({
             <div className="grid grid-cols-3 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
               <div className="col-span-2">
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer</span>
-                <span className="font-semibold text-onyx text-sm">{reviewQuotation.customer}</span>
+                <span className="font-semibold text-onyx text-sm block">{reviewQuotation.customer}</span>
+                {(reviewQuotation.customerGstin || reviewQuotation.customerPan) && (
+                  <span className="text-[10px] text-onyx/60 mt-1 block">
+                    {reviewQuotation.customerGstin ? `GSTIN: ${reviewQuotation.customerGstin}` : ""}
+                    {reviewQuotation.customerGstin && reviewQuotation.customerPan ? " | " : ""}
+                    {reviewQuotation.customerPan ? `PAN: ${reviewQuotation.customerPan}` : ""}
+                  </span>
+                )}
               </div>
               <div>
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Valid Upto</span>

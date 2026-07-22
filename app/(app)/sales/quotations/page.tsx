@@ -12,7 +12,7 @@ export default async function QuotationsPage() {
     db.customerQuotation.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      include: { customer: { select: { name: true, code: true } }, lines: true },
+      include: { customer: { select: { name: true, code: true, gstin: true, pan: true } }, lines: true },
       take: 200,
     }),
     db.customer.findMany({
@@ -35,7 +35,7 @@ export default async function QuotationsPage() {
     }),
     db.company.findUnique({
       where: { id: companyId },
-      select: { name: true, address: true, gstin: true, pan: true, cin: true, contactEmail: true, contactPhone: true },
+      select: { name: true, address: true, gstin: true, pan: true, cin: true, contactEmail: true, contactPhone: true, city: true, governingPlace: true },
     }),
   ]);
 
@@ -44,6 +44,8 @@ export default async function QuotationsPage() {
     number: q.number,
     customerId: q.customerId,
     customer: `${q.customer.name} (${q.customer.code})`,
+    customerGstin: q.customer.gstin,
+    customerPan: q.customer.pan,
     status: q.status,
     quotationDate: q.quotationDate.toISOString(),
     validUpto: q.validUpto?.toISOString() || null,

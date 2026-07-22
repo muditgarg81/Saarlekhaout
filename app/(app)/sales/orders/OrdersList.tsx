@@ -24,6 +24,8 @@ interface Order {
   number: string;
   customerId?: string;
   customer: string;
+  customerGstin?: string | null;
+  customerPan?: string | null;
   type: string;
   status: string;
   orderDate: string;
@@ -657,11 +659,17 @@ export default function OrdersList({
               </button>
             </div>
 
-            {/* Info Grid */}
             <div className="grid grid-cols-3 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
-              <div>
+              <div className="col-span-2">
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer</span>
-                <span className="font-semibold text-onyx text-sm">{reviewOrder.customer}</span>
+                <span className="font-semibold text-onyx text-sm block">{reviewOrder.customer}</span>
+                {(reviewOrder.customerGstin || reviewOrder.customerPan) && (
+                  <span className="text-[10px] text-onyx/60 mt-1 block">
+                    {reviewOrder.customerGstin ? `GSTIN: ${reviewOrder.customerGstin}` : ""}
+                    {reviewOrder.customerGstin && reviewOrder.customerPan ? " | " : ""}
+                    {reviewOrder.customerPan ? `PAN: ${reviewOrder.customerPan}` : ""}
+                  </span>
+                )}
               </div>
               <div>
                 <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Delivery Date</span>
