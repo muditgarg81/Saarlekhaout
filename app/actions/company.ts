@@ -146,6 +146,8 @@ export async function uploadCompanyLogo(base64Data: string, fileName: string) {
 export async function updateDocSettings(data: {
   poHeaderNote?: string | null;
   poFooterNote?: string | null;
+  quotationTerms?: string | null;
+  soTerms?: string | null;
   authorizedSignatory?: string | null;
   declaration?: string | null;
   showBankDetails?: boolean;
@@ -164,6 +166,8 @@ export async function updateDocSettings(data: {
     update: {
       poHeaderNote: data.poHeaderNote,
       poFooterNote: data.poFooterNote,
+      quotationTerms: data.quotationTerms,
+      soTerms: data.soTerms,
       authorizedSignatory: data.authorizedSignatory,
       declaration: data.declaration,
       showBankDetails: data.showBankDetails,
@@ -173,6 +177,8 @@ export async function updateDocSettings(data: {
       companyId,
       poHeaderNote: data.poHeaderNote,
       poFooterNote: data.poFooterNote,
+      quotationTerms: data.quotationTerms,
+      soTerms: data.soTerms,
       authorizedSignatory: data.authorizedSignatory,
       declaration: data.declaration,
       showBankDetails: data.showBankDetails,

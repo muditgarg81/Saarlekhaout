@@ -8,7 +8,7 @@ export default async function QuotationsPage() {
   if (!user) redirect("/auth/signin");
   const companyId = user.companyId;
 
-  const [quotations, customers, items, termsTemplates] = await Promise.all([
+  const [quotations, customers, items, termsTemplates, docSettings] = await Promise.all([
     db.customerQuotation.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
@@ -29,6 +29,9 @@ export default async function QuotationsPage() {
     db.termsTemplate.findMany({
       where: { companyId },
       orderBy: { title: "asc" },
+    }),
+    db.companyDocumentSettings.findUnique({
+      where: { companyId },
     }),
   ]);
 
@@ -53,6 +56,7 @@ export default async function QuotationsPage() {
       customers={customers}
       items={items}
       termsTemplates={termsTemplates}
+      presetTerms={docSettings?.quotationTerms || ""}
       user={user as any}
     />
   );

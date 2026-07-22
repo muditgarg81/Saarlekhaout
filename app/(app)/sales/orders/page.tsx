@@ -8,7 +8,7 @@ export default async function OrdersPage() {
   if (!user) redirect("/auth/signin");
   const companyId = user.companyId;
 
-  const [orders, customers, items, termsTemplates] = await Promise.all([
+  const [orders, customers, items, termsTemplates, docSettings] = await Promise.all([
     db.salesOrder.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
@@ -29,6 +29,9 @@ export default async function OrdersPage() {
     db.termsTemplate.findMany({
       where: { companyId },
       orderBy: { title: "asc" },
+    }),
+    db.companyDocumentSettings.findUnique({
+      where: { companyId },
     }),
   ]);
 
@@ -55,6 +58,7 @@ export default async function OrdersPage() {
       customers={customers}
       items={items}
       termsTemplates={termsTemplates}
+      presetTerms={docSettings?.soTerms || ""}
       user={user as any}
     />
   );

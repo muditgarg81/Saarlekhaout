@@ -50,12 +50,14 @@ export default function OrdersList({
   customers,
   items,
   termsTemplates,
+  presetTerms,
   user,
 }: {
   initialOrders: Order[];
   customers: CustomerOpt[];
   items: ItemOpt[];
   termsTemplates: any[];
+  presetTerms: string;
   user: SessionUser;
 }) {
   const router = useRouter();
@@ -68,7 +70,7 @@ export default function OrdersList({
   const [customerId, setCustomerId] = useState("");
   const [customerPoNo, setCustomerPoNo] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [termsConditions, setTermsConditions] = useState("");
+  const [termsConditions, setTermsConditions] = useState(presetTerms || "");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
 
   useEffect(() => {
@@ -79,6 +81,13 @@ export default function OrdersList({
       }
     }
   }, [isOpen, termsTemplates, termsConditions]);
+
+  // When presetTerms updates, keep it updated
+  useEffect(() => {
+    if (!termsConditions) {
+      setTermsConditions(presetTerms || "");
+    }
+  }, [presetTerms]);
 
   const canCreate = can(user, "so.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "so.approve") || ["ADMIN", "OWNER"].includes(user.role);
@@ -166,7 +175,7 @@ export default function OrdersList({
     setCustomerId("");
     setCustomerPoNo("");
     setDeliveryDate("");
-    setTermsConditions("");
+    setTermsConditions(presetTerms || "");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };

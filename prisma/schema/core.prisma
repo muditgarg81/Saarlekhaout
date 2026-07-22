@@ -90,6 +90,8 @@ model CompanyDocumentSettings {
   companyId           String  @unique
   poHeaderNote        String?
   poFooterNote        String?
+  quotationTerms      String?
+  soTerms             String?
   authorizedSignatory String?
   declaration         String?
   showBankDetails     Boolean @default(false)

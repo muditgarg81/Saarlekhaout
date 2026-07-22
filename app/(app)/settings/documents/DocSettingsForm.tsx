@@ -9,6 +9,8 @@ interface DocSettingsData {
   companyId: string;
   poHeaderNote?: string | null;
   poFooterNote?: string | null;
+  quotationTerms?: string | null;
+  soTerms?: string | null;
   authorizedSignatory?: string | null;
   declaration?: string | null;
   showBankDetails: boolean;
@@ -54,6 +56,8 @@ export default function DocSettingsForm({
   // Document PDF text states
   const [poHeaderNote, setPoHeaderNote] = useState(initialSettings.poHeaderNote || "");
   const [poFooterNote, setPoFooterNote] = useState(initialSettings.poFooterNote || "");
+  const [quotationTerms, setQuotationTerms] = useState(initialSettings.quotationTerms || "");
+  const [soTerms, setSoTerms] = useState(initialSettings.soTerms || "");
   const [authorizedSignatory, setAuthorizedSignatory] = useState(initialSettings.authorizedSignatory || "");
   const [declaration, setDeclaration] = useState(initialSettings.declaration || "");
   const [showBankDetails, setShowBankDetails] = useState(initialSettings.showBankDetails);
@@ -92,6 +96,8 @@ export default function DocSettingsForm({
       await updateDocSettings({
         poHeaderNote,
         poFooterNote,
+        quotationTerms,
+        soTerms,
         authorizedSignatory,
         declaration,
         showBankDetails,
@@ -165,9 +171,29 @@ export default function DocSettingsForm({
               <div>
                 <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Purchase Order Footer note / Terms</label>
                 <textarea
-                  value={poFooterNote}
-                  onChange={(e) => setPoFooterNote(e.target.value)}
-                  placeholder="e.g. Terms & Conditions apply."
+                   value={poFooterNote}
+                   onChange={(e) => setPoFooterNote(e.target.value)}
+                   placeholder="e.g. Terms & Conditions apply."
+                   className="w-full text-xs p-2 bg-cream border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron min-h-[60px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Customer Quotation Preset Terms</label>
+                <textarea
+                  value={quotationTerms}
+                  onChange={(e) => setQuotationTerms(e.target.value)}
+                  placeholder="e.g. 1. Delivery within 2-3 weeks. 2. Price is valid for 15 days."
+                  className="w-full text-xs p-2 bg-cream border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron min-h-[60px]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Sales Order Preset Terms</label>
+                <textarea
+                  value={soTerms}
+                  onChange={(e) => setSoTerms(e.target.value)}
+                  placeholder="e.g. Terms of payment: 100% advance."
                   className="w-full text-xs p-2 bg-cream border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron min-h-[60px]"
                 />
               </div>

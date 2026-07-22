@@ -48,12 +48,14 @@ export default function QuotationsList({
   customers,
   items,
   termsTemplates,
+  presetTerms,
   user,
 }: {
   initialQuotations: Quotation[];
   customers: CustomerOpt[];
   items: ItemOpt[];
   termsTemplates: any[];
+  presetTerms: string;
   user: SessionUser;
 }) {
   const router = useRouter();
@@ -69,7 +71,7 @@ export default function QuotationsList({
   const [billingAddress, setBillingAddress] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [placeOfSupply, setPlaceOfSupply] = useState("");
-  const [termsConditions, setTermsConditions] = useState("");
+  const [termsConditions, setTermsConditions] = useState(presetTerms || "");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
@@ -82,6 +84,13 @@ export default function QuotationsList({
       }
     }
   }, [isOpen, termsTemplates, termsConditions]);
+
+  // When presetTerms updates (e.g. settings change), keep it updated
+  useEffect(() => {
+    if (!termsConditions) {
+      setTermsConditions(presetTerms || "");
+    }
+  }, [presetTerms]);
 
   const canCreate = can(user, "quotation.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "quotation.approve") || ["ADMIN", "OWNER"].includes(user.role);
@@ -216,7 +225,7 @@ export default function QuotationsList({
     setBillingAddress("");
     setShippingAddress("");
     setPlaceOfSupply("");
-    setTermsConditions("");
+    setTermsConditions(presetTerms || "");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
