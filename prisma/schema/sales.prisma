@@ -549,3 +549,18 @@ model PackingListLine {
   @@schema("sales")
 }
 
+model TermsTemplate {
+  id        String   @id @default(cuid())
+  companyId String
+  title     String   // e.g. "Standard Domestic Sales", "Export Terms"
+  content   String   // The text of terms and conditions
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  company   Company  @relation(fields: [companyId], references: [id])
+
+  @@unique([companyId, title])
+  @@schema("sales")
+}
+
+

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   createQuotation,
@@ -47,11 +47,13 @@ export default function QuotationsList({
   initialQuotations,
   customers,
   items,
+  termsTemplates,
   user,
 }: {
   initialQuotations: Quotation[];
   customers: CustomerOpt[];
   items: ItemOpt[];
+  termsTemplates: any[];
   user: SessionUser;
 }) {
   const router = useRouter();
@@ -71,6 +73,15 @@ export default function QuotationsList({
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (isOpen && !termsConditions) {
+      const defaultTemplate = termsTemplates.find(t => t.isDefault);
+      if (defaultTemplate) {
+        setTermsConditions(defaultTemplate.content);
+      }
+    }
+  }, [isOpen, termsTemplates, termsConditions]);
 
   const canCreate = can(user, "quotation.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "quotation.approve") || ["ADMIN", "OWNER"].includes(user.role);
@@ -414,6 +425,35 @@ export default function QuotationsList({
                   value={shippingAddress}
                   onChange={(e) => setShippingAddress(e.target.value)}
                   rows={2}
+                  className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                />
+              </div>
+
+              <div className="col-span-2">
+                <label className="block text-xs font-bold text-onyx/70 uppercase mb-1 flex items-center justify-between">
+                  <span>Terms & Conditions</span>
+                  {termsTemplates && termsTemplates.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        const t = termsTemplates.find(x => x.id === e.target.value);
+                        if (t) setTermsConditions(t.content);
+                        e.target.value = "";
+                      }}
+                      className="bg-transparent text-[10px] font-bold text-saffron-dark hover:text-saffron-dark/80 focus:outline-none border-none cursor-pointer"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Apply Terms Template...</option>
+                      {termsTemplates.map((t: any) => (
+                        <option key={t.id} value={t.id} className="text-onyx">{t.title}</option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+                <textarea
+                  value={termsConditions}
+                  onChange={(e) => setTermsConditions(e.target.value)}
+                  placeholder="Warranty details, validity, delivery schedules or apply a template..."
+                  rows={3}
                   className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
                 />
               </div>

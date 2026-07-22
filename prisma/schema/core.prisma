@@ -31,6 +31,7 @@ model Company {
   stores             Store[]
   memberships        CompanyMembership[]
   customerQuotations CustomerQuotation[]
+  termsTemplates     TermsTemplate[]
 
   @@schema("core")
 }

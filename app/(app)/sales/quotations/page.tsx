@@ -8,7 +8,7 @@ export default async function QuotationsPage() {
   if (!user) redirect("/auth/signin");
   const companyId = user.companyId;
 
-  const [quotations, customers, items] = await Promise.all([
+  const [quotations, customers, items, termsTemplates] = await Promise.all([
     db.customerQuotation.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
@@ -25,6 +25,10 @@ export default async function QuotationsPage() {
       select: { id: true, code: true, name: true, baseUom: true, gstRate: true, specification: true },
       orderBy: { name: "asc" },
       take: 1000,
+    }),
+    db.termsTemplate.findMany({
+      where: { companyId },
+      orderBy: { title: "asc" },
     }),
   ]);
 
@@ -43,5 +47,13 @@ export default async function QuotationsPage() {
     lineCount: q.lines.length,
   }));
 
-  return <QuotationsList initialQuotations={mapped} customers={customers} items={items} user={user as any} />;
+  return (
+    <QuotationsList
+      initialQuotations={mapped}
+      customers={customers}
+      items={items}
+      termsTemplates={termsTemplates}
+      user={user as any}
+    />
+  );
 }

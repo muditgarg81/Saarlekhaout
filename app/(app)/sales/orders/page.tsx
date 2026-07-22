@@ -8,7 +8,7 @@ export default async function OrdersPage() {
   if (!user) redirect("/auth/signin");
   const companyId = user.companyId;
 
-  const [orders, customers, items] = await Promise.all([
+  const [orders, customers, items, termsTemplates] = await Promise.all([
     db.salesOrder.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
@@ -25,6 +25,10 @@ export default async function OrdersPage() {
       select: { id: true, code: true, name: true, baseUom: true, gstRate: true, specification: true },
       orderBy: { name: "asc" },
       take: 1000,
+    }),
+    db.termsTemplate.findMany({
+      where: { companyId },
+      orderBy: { title: "asc" },
     }),
   ]);
 
@@ -45,5 +49,13 @@ export default async function OrdersPage() {
     lineCount: o.lines.length,
   }));
 
-  return <OrdersList initialOrders={mapped} customers={customers} items={items} user={user as any} />;
+  return (
+    <OrdersList
+      initialOrders={mapped}
+      customers={customers}
+      items={items}
+      termsTemplates={termsTemplates}
+      user={user as any}
+    />
+  );
 }

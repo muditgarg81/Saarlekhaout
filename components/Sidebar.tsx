@@ -740,6 +740,18 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               </Link>
 
               <Link
+                href="/settings/terms"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/settings/terms")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <ClipboardList size={18} />
+                <span>Terms & Conditions</span>
+              </Link>
+
+              <Link
                 href="/settings/members"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                   isActive("/settings/members")

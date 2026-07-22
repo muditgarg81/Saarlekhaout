@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   createSalesOrder,
@@ -49,11 +49,13 @@ export default function OrdersList({
   initialOrders,
   customers,
   items,
+  termsTemplates,
   user,
 }: {
   initialOrders: Order[];
   customers: CustomerOpt[];
   items: ItemOpt[];
+  termsTemplates: any[];
   user: SessionUser;
 }) {
   const router = useRouter();
@@ -66,7 +68,17 @@ export default function OrdersList({
   const [customerId, setCustomerId] = useState("");
   const [customerPoNo, setCustomerPoNo] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
+  const [termsConditions, setTermsConditions] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+
+  useEffect(() => {
+    if (isOpen && !termsConditions) {
+      const defaultTemplate = termsTemplates.find(t => t.isDefault);
+      if (defaultTemplate) {
+        setTermsConditions(defaultTemplate.content);
+      }
+    }
+  }, [isOpen, termsTemplates, termsConditions]);
 
   const canCreate = can(user, "so.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canApprove = can(user, "so.approve") || ["ADMIN", "OWNER"].includes(user.role);
@@ -133,6 +145,7 @@ export default function OrdersList({
       type: "REGULAR" as any,
       customerPoNo: customerPoNo || null,
       deliveryDate: deliveryDate || null,
+      termsConditions: termsConditions || null,
       otherCharges: 0,
       lines: lines
         .filter((l) => l.itemId)
@@ -153,6 +166,7 @@ export default function OrdersList({
     setCustomerId("");
     setCustomerPoNo("");
     setDeliveryDate("");
+    setTermsConditions("");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
@@ -272,6 +286,35 @@ export default function OrdersList({
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Delivery date</label>
                   <input type="date" className={inputCls} value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} />
                 </div>
+              </div>
+
+              <div className="border border-onyx/10 rounded-lg p-3 bg-cream-light/10">
+                <label className="block text-xs font-bold text-onyx/70 uppercase mb-1 flex items-center justify-between">
+                  <span>Terms & Conditions</span>
+                  {termsTemplates && termsTemplates.length > 0 && (
+                    <select
+                      onChange={(e) => {
+                        const t = termsTemplates.find(x => x.id === e.target.value);
+                        if (t) setTermsConditions(t.content);
+                        e.target.value = "";
+                      }}
+                      className="bg-transparent text-[10px] font-bold text-saffron-dark hover:text-saffron-dark/80 focus:outline-none border-none cursor-pointer"
+                      defaultValue=""
+                    >
+                      <option value="" disabled>Apply Terms Template...</option>
+                      {termsTemplates.map((t: any) => (
+                        <option key={t.id} value={t.id} className="text-onyx">{t.title}</option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+                <textarea
+                  value={termsConditions}
+                  onChange={(e) => setTermsConditions(e.target.value)}
+                  placeholder="Warranty details, validity, delivery schedules or apply a template..."
+                  rows={3}
+                  className="w-full text-xs px-3 py-2 bg-white border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                />
               </div>
 
               <div className="border border-onyx/10 rounded-lg overflow-hidden">
