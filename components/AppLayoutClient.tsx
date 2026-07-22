@@ -22,6 +22,18 @@ export default function AppLayoutClient({ user, children }: AppLayoutClientProps
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
 
+  React.useEffect(() => {
+    // Ping heartbeat immediately on mount
+    fetch("/api/heartbeat").catch(err => console.error("Heartbeat fail:", err));
+
+    // Ping heartbeat every 4 minutes
+    const interval = setInterval(() => {
+      fetch("/api/heartbeat").catch(err => console.error("Heartbeat fail:", err));
+    }, 240000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   const mobileTabItems = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, show: true },
     { name: "Orders", href: "/sales/orders", icon: ClipboardList, show: true },

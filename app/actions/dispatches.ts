@@ -4,7 +4,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { DispatchStatus, EWayBillStatus, SoStatus, SoLineStatus, LedgerTxnType } from "@prisma/client";
+import { DispatchStatus, EWayBillStatus, SoStatus, SoLineStatus, LedgerTxnType, SalesInvoiceStatus, EInvoiceStatus } from "@prisma/client";
 import { getNextSequence } from "@/lib/sequences";
 import { postLedgerEntry } from "@/lib/stock";
 import { can } from "@/lib/rbac";
@@ -109,6 +109,7 @@ export async function createDispatch(data: z.infer<typeof dispatchSchema>) {
     }
 
     const number = await getNextSequence(companyId, "DC");
+    const invoiceNumber = await getNextSequence(companyId, "SI");
 
     const result = await db.$transaction(async (tx) => {
       // Idempotency guard for this SO→Dispatch conversion.
@@ -186,6 +187,9 @@ export async function createDispatch(data: z.infer<typeof dispatchSchema>) {
       if (value > EWAY_THRESHOLD) {
         await tx.dispatch.update({ where: { id: dispatch.id }, data: { ewayBillStatus: EWayBillStatus.PENDING } });
       }
+
+      // Auto-generate invoice in DRAFT status
+      await createDraftInvoiceInternal(tx, dispatch.id, invoiceNumber, companyId, actorId);
 
       await logAudit(tx, companyId, actorId, "DISPATCH", "Dispatch", dispatch.id, null, dispatch);
       return dispatch;
@@ -435,6 +439,7 @@ export async function postDispatch(dispatchId: string) {
   const actorId = (session.user as any).id;
 
   try {
+    const invoiceNumber = await getNextSequence(companyId, "SI");
     const dispatch = await db.dispatch.findFirst({
       where: { id: dispatchId, companyId, deletedAt: null },
       include: { lines: true },
@@ -521,6 +526,9 @@ export async function postDispatch(dispatchId: string) {
         data: { status: newStatus },
       });
 
+      // Auto-generate invoice in DRAFT status
+      await createDraftInvoiceInternal(tx, dispatchId, invoiceNumber, companyId, actorId);
+
       await logAudit(tx, companyId, actorId, "POST", "Dispatch", dispatchId, { status: "DRAFT" }, { status: "DISPATCHED" });
     });
 
@@ -530,4 +538,101 @@ export async function postDispatch(dispatchId: string) {
     console.error("Error posting dispatch:", err);
     return { success: false, error: err.message || "Failed to post dispatch" };
   }
+}
+
+async function createDraftInvoiceInternal(
+  tx: any,
+  dispatchId: string,
+  invoiceNumber: string,
+  companyId: string,
+  actorId: string
+) {
+  const dispatch = await tx.dispatch.findUnique({
+    where: { id: dispatchId },
+    include: { lines: true, so: { include: { lines: true } } },
+  });
+  if (!dispatch || !dispatch.soId || !dispatch.so) {
+    throw new Error("Dispatch or associated Sales Order not found for invoice auto-generation");
+  }
+
+  const already = await tx.salesInvoice.findFirst({
+    where: { companyId, dispatchId: dispatch.id, deletedAt: null },
+  });
+  if (already) return;
+
+  const company = await tx.company.findUnique({ where: { id: companyId } });
+  const customer = await tx.customer.findFirst({ where: { id: dispatch.customerId, companyId } });
+  if (!customer) throw new Error("Customer not found for invoice auto-generation");
+
+  const fromState = company?.gstin?.slice(0, 2) || "";
+  const placeOfSupply = dispatch.so.placeOfSupply || customer.gstin?.slice(0, 2) || customer.stateCode || "";
+  const intraState = !!fromState && !!placeOfSupply && fromState === placeOfSupply;
+
+  const soLineById = new Map<string, any>(dispatch.so.lines.map((l: any) => [l.id, l]));
+  const items = await tx.item.findMany({
+    where: { companyId, id: { in: dispatch.lines.map((l: any) => l.itemId) } },
+    select: { id: true, hsnCode: true },
+  });
+  const hsnById = new Map(items.map((i: any) => [i.id, i.hsnCode]));
+
+  const invoiceLines = dispatch.lines.map((dl: any) => {
+    const sol: any = dl.soLineId ? soLineById.get(dl.soLineId) : undefined;
+    const rate = sol?.rate ?? 0;
+    const discount = sol?.discount ?? 0;
+    const gstRate = sol?.gstRate ?? 0;
+    const taxable = dl.qty * rate * (1 - discount / 100);
+    return { itemId: dl.itemId, hsnCode: hsnById.get(dl.itemId) || null, qty: dl.qty, rate, discount, gstRate, taxable };
+  });
+
+  const taxableAmount = invoiceLines.reduce((s: number, l: any) => s + l.taxable, 0);
+  const totalTax = invoiceLines.reduce((s: number, l: any) => s + (l.taxable * l.gstRate) / 100, 0);
+  const cgst = intraState ? totalTax / 2 : 0;
+  const sgst = intraState ? totalTax / 2 : 0;
+  const igst = intraState ? 0 : totalTax;
+  
+  const otherCharges = 0;
+  const preRound = taxableAmount + totalTax + otherCharges;
+  const totalAmount = Math.round(preRound);
+  const roundOff = +(totalAmount - preRound).toFixed(2);
+
+  const invoiceDate = new Date();
+  const dueDate = new Date(invoiceDate);
+  dueDate.setDate(dueDate.getDate() + (customer.creditDays || 0));
+
+  const eInvoiceEligible = !!customer.gstin;
+
+  const invoice = await tx.salesInvoice.create({
+    data: {
+      companyId,
+      number: invoiceNumber,
+      customerId: customer.id,
+      soId: dispatch.soId,
+      dispatchId: dispatch.id,
+      invoiceDate,
+      dueDate,
+      placeOfSupply,
+      taxableAmount: +taxableAmount.toFixed(2),
+      cgst: +cgst.toFixed(2),
+      sgst: +sgst.toFixed(2),
+      igst: +igst.toFixed(2),
+      otherCharges,
+      roundOff,
+      totalAmount,
+      status: SalesInvoiceStatus.DRAFT,
+      einvoiceStatus: eInvoiceEligible ? EInvoiceStatus.PENDING : EInvoiceStatus.NOT_APPLICABLE,
+      createdById: actorId,
+      lines: {
+        create: invoiceLines.map((l: any) => ({
+          itemId: l.itemId,
+          hsnCode: l.hsnCode,
+          qty: l.qty,
+          rate: l.rate,
+          discount: l.discount,
+          gstRate: l.gstRate,
+        })),
+      },
+    },
+  });
+
+  await logAudit(tx, companyId, actorId, "CREATE_DRAFT", "SalesInvoice", invoice.id, null, invoice);
 }
