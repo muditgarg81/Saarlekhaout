@@ -80,7 +80,10 @@ export default async function QuotationsPage() {
       items={items}
       termsTemplates={termsTemplates}
       presetTerms={docSettings?.quotationTerms || ""}
-      company={company}
+      company={{
+        ...company,
+        authorizedSignatory: docSettings?.authorizedSignatory || "Sales Manager"
+      }}
       user={user as any}
     />
   );

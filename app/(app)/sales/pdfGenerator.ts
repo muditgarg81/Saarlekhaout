@@ -207,6 +207,7 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
   doc.text(`Grand Total: Rs. ${data.value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, 140, finalY + 6);
   
   // Terms & conditions on the left
+  let termsY = finalY + 6;
   if (data.termsConditions) {
     doc.setFont("helvetica", "bold");
     doc.setFontSize(9);
@@ -217,15 +218,36 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
     doc.setTextColor(80, 80, 80);
     
     const lines = doc.splitTextToSize(data.termsConditions, 180);
-    let termsY = finalY + 21;
+    termsY = finalY + 21;
     lines.forEach((line: string) => {
-      if (termsY > 280) {
+      if (termsY > 275) {
         doc.addPage();
         termsY = 20;
       }
       doc.text(line, 14, termsY);
       termsY += 5.5; 
     });
+  }
+
+  // Draw Authorized Signatory block at the bottom right
+  let sigY = Math.max(finalY + 15, termsY) + 12;
+  if (sigY > 265) {
+    doc.addPage();
+    sigY = 30;
+  }
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
+  doc.setTextColor(33, 33, 33);
+  doc.text(`For ${company?.name || "Crox Oil & Gas Pvt. Ltd."}`, 135, sigY);
+  
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.text("Authorized Signatory", 135, sigY + 15);
+  if (company?.authorizedSignatory) {
+    doc.setFont("helvetica", "italic");
+    doc.setFontSize(7.5);
+    doc.text(`(${company.authorizedSignatory})`, 135, sigY + 19);
   }
   
   // Save/Download PDF

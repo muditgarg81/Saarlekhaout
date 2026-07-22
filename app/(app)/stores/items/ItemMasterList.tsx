@@ -130,6 +130,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<Item | null>(null);
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
+  const [categoryLocked, setCategoryLocked] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -716,6 +717,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
 
   const handleOpenCreate = async () => {
     setModalMode("create");
+    setCategoryLocked(false);
     setFormError(null);
     setFormData({
       id: "",
@@ -755,6 +757,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
 
   const handleOpenEdit = (item: Item) => {
     setModalMode("edit");
+    setCategoryLocked(!!item.categoryId);
     setFormError(null);
     setFormData({
       id: item.id,
@@ -1774,7 +1777,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
                     options={localCategories.map(c => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                     value={formData.categoryId}
                     onChange={(val) => handleFormCategoryChange(val)}
-                    disabled={modalMode === "edit"}
+                    disabled={categoryLocked}
                     placeholder="Select Category"
                     onCreateOption={handleQuickCreateCategory}
                   />
