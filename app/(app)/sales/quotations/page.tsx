@@ -38,10 +38,26 @@ export default async function QuotationsPage() {
   const mapped = quotations.map((q) => ({
     id: q.id,
     number: q.number,
+    customerId: q.customerId,
     customer: `${q.customer.name} (${q.customer.code})`,
     status: q.status,
     quotationDate: q.quotationDate.toISOString(),
     validUpto: q.validUpto?.toISOString() || null,
+    paymentTerms: q.paymentTerms,
+    billingAddress: q.billingAddress,
+    shippingAddress: q.shippingAddress,
+    placeOfSupply: q.placeOfSupply,
+    termsConditions: q.termsConditions,
+    otherCharges: q.otherCharges,
+    lines: q.lines.map((l) => ({
+      id: l.id,
+      itemId: l.itemId,
+      qty: l.qty,
+      rate: l.rate,
+      discount: l.discount,
+      gstRate: l.gstRate,
+      specification: l.specification,
+    })),
     value:
       q.lines.reduce(
         (s, l) => s + l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100),

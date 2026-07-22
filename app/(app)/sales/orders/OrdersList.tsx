@@ -9,7 +9,7 @@ import {
   rejectSalesOrder,
   cancelSalesOrder,
 } from "@/app/actions/salesOrders";
-import { Plus, X, Trash2, Send, Check, Ban, ClipboardList } from "lucide-react";
+import { Plus, X, Trash2, Send, Check, Ban, ClipboardList, Eye } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
@@ -19,6 +19,7 @@ import { quickCreateCustomer } from "@/app/actions/customers";
 interface Order {
   id: string;
   number: string;
+  customerId?: string;
   customer: string;
   type: string;
   status: string;
@@ -26,7 +27,14 @@ interface Order {
   deliveryDate: string | null;
   customerPoNo: string | null;
   value: number;
-  lineCount: number;
+  lineCount?: number;
+  paymentTerms?: string | null;
+  billingAddress?: string | null;
+  shippingAddress?: string | null;
+  placeOfSupply?: string | null;
+  termsConditions?: string | null;
+  otherCharges?: number;
+  lines?: any[];
 }
 interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null }
 interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null; specification: string | null }
@@ -65,6 +73,7 @@ export default function OrdersList({
   const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
   const [localCustomers, setLocalCustomers] = useState<CustomerOpt[]>(customers);
   const [isOpen, setIsOpen] = useState(false);
+  const [reviewOrder, setReviewOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState("");
@@ -222,20 +231,23 @@ export default function OrdersList({
           </thead>
           <tbody className="divide-y divide-onyx/5">
             {orders.map((o) => (
-              <tr key={o.id} className="hover:bg-cream-light/40">
-                <td className="px-4 py-3 font-mono text-xs text-onyx/70">{o.number}</td>
-                <td className="px-4 py-3 text-onyx">{o.customer}</td>
-                <td className="px-4 py-3 text-onyx/60 text-xs">{o.customerPoNo || "—"}</td>
-                <td className="px-4 py-3 text-right font-medium text-onyx">
+              <tr key={o.id} className="hover:bg-cream-light/40 cursor-pointer">
+                <td onClick={() => setReviewOrder(o)} className="px-4 py-3 font-mono text-xs text-onyx/70">{o.number}</td>
+                <td onClick={() => setReviewOrder(o)} className="px-4 py-3 text-onyx">{o.customer}</td>
+                <td onClick={() => setReviewOrder(o)} className="px-4 py-3 text-onyx/60 text-xs">{o.customerPoNo || "—"}</td>
+                <td onClick={() => setReviewOrder(o)} className="px-4 py-3 text-right font-medium text-onyx">
                   ₹{o.value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
                 </td>
-                <td className="px-4 py-3">
+                <td onClick={() => setReviewOrder(o)} className="px-4 py-3">
                   <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${STATUS_STYLES[o.status]}`}>
                     {o.status.replace(/_/g, " ")}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
+                    <button title="Review Details" onClick={() => setReviewOrder(o)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
+                      <Eye size={15} />
+                    </button>
                     {o.status === "DRAFT" && canCreate && (
                       <button title="Submit" onClick={() => act(() => submitSalesOrder(o.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
                         <Send size={15} />
@@ -398,6 +410,179 @@ export default function OrdersList({
                 {loading ? "Creating…" : "Create order"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {reviewOrder && (
+        <div className="fixed inset-0 bg-black/45 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 font-body">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-onyx/5 mb-6">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-heading font-bold text-onyx font-sans">Sales Order {reviewOrder.number}</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${STATUS_STYLES[reviewOrder.status]}`}>
+                    {reviewOrder.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <p className="text-[11px] text-onyx/50 mt-1">
+                  Raised on {new Date(reviewOrder.orderDate).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                </p>
+              </div>
+              <button 
+                onClick={() => setReviewOrder(null)} 
+                className="text-onyx/40 hover:text-onyx hover:bg-cream-light p-1.5 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Info Grid */}
+            <div className="grid grid-cols-2 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer</span>
+                <span className="font-semibold text-onyx text-sm">{reviewOrder.customer}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Delivery Date</span>
+                <span className="font-medium text-onyx">{reviewOrder.deliveryDate ? new Date(reviewOrder.deliveryDate).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer PO #</span>
+                <span className="font-medium text-onyx">{reviewOrder.customerPoNo || "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Payment Terms</span>
+                <span className="font-medium text-onyx">{reviewOrder.paymentTerms || "—"}</span>
+              </div>
+              <div className="col-span-2 grid grid-cols-2 gap-4 pt-3 border-t border-onyx/5">
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Billing Address</span>
+                  <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{reviewOrder.billingAddress || "—"}</p>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Shipping Address</span>
+                  <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{reviewOrder.shippingAddress || "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="mb-6">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-onyx/50 mb-2">Line Items</h4>
+              <div className="border border-onyx/5 rounded-xl overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-cream-light text-onyx/60 font-semibold text-[10px] uppercase tracking-wider">
+                    <tr>
+                      <th className="text-left px-3 py-2">Item Details</th>
+                      <th className="text-center px-3 py-2 w-20">Qty</th>
+                      <th className="text-right px-3 py-2 w-28">Basic Price</th>
+                      <th className="text-center px-3 py-2 w-20">Disc %</th>
+                      <th className="text-center px-3 py-2 w-20">GST %</th>
+                      <th className="text-right px-3 py-2 w-28 pr-4">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-onyx/5 bg-white">
+                    {reviewOrder.lines?.map((l: any, idx: number) => {
+                      const item = itemById.get(l.itemId);
+                      const subtotal = l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100);
+                      return (
+                        <tr key={l.id || idx} className="hover:bg-cream-light/10">
+                          <td className="px-3 py-2.5">
+                            <span className="font-semibold text-onyx block">{item?.name || "Unknown Item"}</span>
+                            <span className="text-[10px] text-onyx/50 font-mono block mt-0.5">{item?.code || ""}</span>
+                            {l.specification && (
+                              <span className="text-[10px] text-saffron-dark bg-saffron/5 px-1.5 py-0.5 rounded font-mono inline-block mt-1">
+                                Spec: {l.specification}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-medium text-onyx">{l.qty}</td>
+                          <td className="px-3 py-2.5 text-right font-medium text-onyx">₹{l.rate.toLocaleString("en-IN")}</td>
+                          <td className="px-3 py-2.5 text-center text-onyx/75">{l.discount}%</td>
+                          <td className="px-3 py-2.5 text-center text-onyx/75">{l.gstRate}%</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-onyx pr-4">
+                            ₹{subtotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Terms & Conditions Section */}
+            {reviewOrder.termsConditions && (
+              <div className="mb-6 p-4 bg-cream-light/20 border border-onyx/5 rounded-xl">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/50 mb-2">Terms & Conditions</span>
+                <p className="text-xs text-onyx/80 whitespace-pre-wrap leading-relaxed font-mono">
+                  {reviewOrder.termsConditions}
+                </p>
+              </div>
+            )}
+
+            {/* Bottom Row: Totals & Modal actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-onyx/5 gap-4">
+              <div className="text-sm font-semibold text-onyx">
+                Grand Total: <span className="text-saffron-dark font-bold text-base">₹{reviewOrder.value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}</span>
+              </div>
+              <div className="flex gap-2 justify-end">
+                {/* Pending Approval Admin Review Actions */}
+                {reviewOrder.status === "PENDING_APPROVAL" && canApprove && (
+                  <>
+                    <button
+                      onClick={async () => {
+                        setLoading(true);
+                        const res = await approveSalesOrder(reviewOrder.id);
+                        setLoading(false);
+                        if (res.success) {
+                          setReviewOrder(null);
+                          router.refresh();
+                        } else {
+                          alert(res.error);
+                        }
+                      }}
+                      disabled={loading}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm disabled:opacity-50"
+                    >
+                      <Check size={14} />
+                      <span>Approve</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const reason = prompt("Enter rejection reason:");
+                        if (reason === null) return;
+                        setLoading(true);
+                        const res = await rejectSalesOrder(reviewOrder.id, reason || "Rejected");
+                        setLoading(false);
+                        if (res.success) {
+                          setReviewOrder(null);
+                          router.refresh();
+                        } else {
+                          alert(res.error);
+                        }
+                      }}
+                      disabled={loading}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm disabled:opacity-50"
+                    >
+                      <Ban size={14} />
+                      <span>Reject</span>
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={() => setReviewOrder(null)}
+                  className="px-4 py-2 border border-onyx/10 hover:bg-cream-light text-onyx rounded-lg text-xs font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

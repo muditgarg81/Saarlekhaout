@@ -10,7 +10,7 @@ import {
   cancelQuotation,
   convertToSalesOrder,
 } from "@/app/actions/quotations";
-import { Plus, X, Trash2, Send, Check, Ban, FileText, ShoppingCart } from "lucide-react";
+import { Plus, X, Trash2, Send, Check, Ban, FileText, ShoppingCart, Eye } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { QuotationStatus } from "@prisma/client";
 import { SearchableSelect } from "@/components/SearchableSelect";
@@ -21,11 +21,19 @@ import { quickCreateCustomer } from "@/app/actions/customers";
 interface Quotation {
   id: string;
   number: string;
+  customerId?: string;
   customer: string;
   status: string;
   quotationDate: string;
   validUpto: string | null;
   value: number;
+  paymentTerms?: string | null;
+  billingAddress?: string | null;
+  shippingAddress?: string | null;
+  placeOfSupply?: string | null;
+  termsConditions?: string | null;
+  otherCharges?: number;
+  lines?: any[];
   lineCount: number;
 }
 interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null; billingAddresses?: any; shippingAddresses?: any; billingAddress?: string | null; shippingAddress?: string | null; }
@@ -63,6 +71,7 @@ export default function QuotationsList({
   const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
   const [localCustomers, setLocalCustomers] = useState<CustomerOpt[]>(customers);
   const [isOpen, setIsOpen] = useState(false);
+  const [reviewQuotation, setReviewQuotation] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [customerId, setCustomerId] = useState("");
@@ -272,20 +281,23 @@ export default function QuotationsList({
           </thead>
           <tbody className="divide-y divide-onyx/5">
             {quotations.map((q) => (
-              <tr key={q.id} className="hover:bg-cream-light/40">
-                <td className="px-4 py-3 font-mono text-xs text-onyx/70">{q.number}</td>
-                <td className="px-4 py-3 text-onyx">{q.customer}</td>
-                <td className="px-4 py-3 text-onyx/60 text-xs">{q.validUpto ? new Date(q.validUpto).toLocaleDateString("en-IN") : "—"}</td>
-                <td className="px-4 py-3 text-right font-medium text-onyx">
+              <tr key={q.id} className="hover:bg-cream-light/40 cursor-pointer">
+                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 font-mono text-xs text-onyx/70">{q.number}</td>
+                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx">{q.customer}</td>
+                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx/60 text-xs">{q.validUpto ? new Date(q.validUpto).toLocaleDateString("en-IN") : "—"}</td>
+                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-right font-medium text-onyx">
                   ₹{q.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
                 </td>
-                <td className="px-4 py-3">
+                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3">
                   <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${STATUS_STYLES[q.status]}`}>
                     {q.status.replace(/_/g, " ")}
                   </span>
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
+                    <button title="Review Details" onClick={() => setReviewQuotation(q)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
+                      <Eye size={15} />
+                    </button>
                     {q.status === "DRAFT" && canCreate && (
                       <button title="Submit for Approval" onClick={() => act(() => submitQuotation(q.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
                         <Send size={15} />
@@ -594,6 +606,179 @@ export default function QuotationsList({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {reviewQuotation && (
+        <div className="fixed inset-0 bg-black/45 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 font-body">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-onyx/5 mb-6">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-heading font-bold text-onyx font-sans">Quotation {reviewQuotation.number}</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${STATUS_STYLES[reviewQuotation.status]}`}>
+                    {reviewQuotation.status.replace(/_/g, " ")}
+                  </span>
+                </div>
+                <p className="text-[11px] text-onyx/50 mt-1">
+                  Raised on {new Date(reviewQuotation.quotationDate).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                </p>
+              </div>
+              <button 
+                onClick={() => setReviewQuotation(null)} 
+                className="text-onyx/40 hover:text-onyx hover:bg-cream-light p-1.5 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Info Grid */}
+            <div className="grid grid-cols-2 gap-6 mb-6 text-xs bg-cream-light/10 p-4 rounded-xl border border-onyx/5">
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer</span>
+                <span className="font-semibold text-onyx text-sm">{reviewQuotation.customer}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Valid Upto</span>
+                <span className="font-medium text-onyx">{reviewQuotation.validUpto ? new Date(reviewQuotation.validUpto).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Payment Terms</span>
+                <span className="font-medium text-onyx">{reviewQuotation.paymentTerms || "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Place of Supply</span>
+                <span className="font-medium text-onyx">{reviewQuotation.placeOfSupply || "—"}</span>
+              </div>
+              <div className="col-span-2 grid grid-cols-2 gap-4 pt-3 border-t border-onyx/5">
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Billing Address</span>
+                  <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{reviewQuotation.billingAddress || "—"}</p>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Shipping Address</span>
+                  <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{reviewQuotation.shippingAddress || "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Items Table */}
+            <div className="mb-6">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-onyx/50 mb-2">Line Items</h4>
+              <div className="border border-onyx/5 rounded-xl overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-cream-light text-onyx/60 font-semibold text-[10px] uppercase tracking-wider">
+                    <tr>
+                      <th className="text-left px-3 py-2">Item Details</th>
+                      <th className="text-center px-3 py-2 w-20">Qty</th>
+                      <th className="text-right px-3 py-2 w-28">Basic Price</th>
+                      <th className="text-center px-3 py-2 w-20">Disc %</th>
+                      <th className="text-center px-3 py-2 w-20">GST %</th>
+                      <th className="text-right px-3 py-2 w-28 pr-4">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-onyx/5 bg-white">
+                    {reviewQuotation.lines?.map((l: any, idx: number) => {
+                      const item = itemById.get(l.itemId);
+                      const subtotal = l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100);
+                      return (
+                        <tr key={l.id || idx} className="hover:bg-cream-light/10">
+                          <td className="px-3 py-2.5">
+                            <span className="font-semibold text-onyx block">{item?.name || "Unknown Item"}</span>
+                            <span className="text-[10px] text-onyx/50 font-mono block mt-0.5">{item?.code || ""}</span>
+                            {l.specification && (
+                              <span className="text-[10px] text-saffron-dark bg-saffron/5 px-1.5 py-0.5 rounded font-mono inline-block mt-1">
+                                Spec: {l.specification}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-medium text-onyx">{l.qty}</td>
+                          <td className="px-3 py-2.5 text-right font-medium text-onyx">₹{l.rate.toLocaleString("en-IN")}</td>
+                          <td className="px-3 py-2.5 text-center text-onyx/75">{l.discount}%</td>
+                          <td className="px-3 py-2.5 text-center text-onyx/75">{l.gstRate}%</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-onyx pr-4">
+                            ₹{subtotal.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Terms & Conditions Section */}
+            {reviewQuotation.termsConditions && (
+              <div className="mb-6 p-4 bg-cream-light/20 border border-onyx/5 rounded-xl">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/50 mb-2">Terms & Conditions</span>
+                <p className="text-xs text-onyx/80 whitespace-pre-wrap leading-relaxed font-mono">
+                  {reviewQuotation.termsConditions}
+                </p>
+              </div>
+            )}
+
+            {/* Bottom Row: Totals & Modal actions */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between pt-4 border-t border-onyx/5 gap-4">
+              <div className="text-sm font-semibold text-onyx">
+                Grand Total: <span className="text-saffron-dark font-bold text-base">₹{reviewQuotation.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+              </div>
+              <div className="flex gap-2 justify-end">
+                {/* Pending Approval Admin Review Actions */}
+                {reviewQuotation.status === "PENDING_APPROVAL" && canApprove && (
+                  <>
+                    <button
+                      onClick={async () => {
+                        setLoading(true);
+                        const res = await approveQuotation(reviewQuotation.id);
+                        setLoading(false);
+                        if (res.success) {
+                          setReviewQuotation(null);
+                          router.refresh();
+                        } else {
+                          alert(res.error);
+                        }
+                      }}
+                      disabled={loading}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm disabled:opacity-50"
+                    >
+                      <Check size={14} />
+                      <span>Approve</span>
+                    </button>
+                    <button
+                      onClick={async () => {
+                        const reason = prompt("Enter rejection reason:");
+                        if (reason === null) return;
+                        setLoading(true);
+                        const res = await rejectQuotation(reviewQuotation.id, reason || "Rejected");
+                        setLoading(false);
+                        if (res.success) {
+                          setReviewQuotation(null);
+                          router.refresh();
+                        } else {
+                          alert(res.error);
+                        }
+                      }}
+                      disabled={loading}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-bold rounded-lg text-xs flex items-center gap-1 shadow-sm disabled:opacity-50"
+                    >
+                      <Ban size={14} />
+                      <span>Reject</span>
+                    </button>
+                  </>
+                )}
+
+                <button
+                  onClick={() => setReviewQuotation(null)}
+                  className="px-4 py-2 border border-onyx/10 hover:bg-cream-light text-onyx rounded-lg text-xs font-semibold"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}

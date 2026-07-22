@@ -38,12 +38,28 @@ export default async function OrdersPage() {
   const mapped = orders.map((o) => ({
     id: o.id,
     number: o.number,
+    customerId: o.customerId,
     customer: `${o.customer.name} (${o.customer.code})`,
     type: o.type,
     status: o.status,
     orderDate: o.orderDate.toISOString(),
     deliveryDate: o.deliveryDate?.toISOString() || null,
     customerPoNo: o.customerPoNo,
+    paymentTerms: o.paymentTerms,
+    billingAddress: o.billingAddress,
+    shippingAddress: o.shippingAddress,
+    placeOfSupply: o.placeOfSupply,
+    termsConditions: o.termsConditions,
+    otherCharges: o.otherCharges,
+    lines: o.lines.map((l) => ({
+      id: l.id,
+      itemId: l.itemId,
+      qty: l.qty,
+      rate: l.rate,
+      discount: l.discount,
+      gstRate: l.gstRate,
+      specification: l.specification,
+    })),
     value:
       o.lines.reduce(
         (s, l) => s + l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100),

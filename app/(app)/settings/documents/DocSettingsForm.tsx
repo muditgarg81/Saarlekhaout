@@ -35,17 +35,14 @@ interface DocSettingsFormProps {
 }
 
 const DOC_TYPES = [
-  { type: "PO", name: "Purchase Order" },
-  { type: "GRN", name: "Goods Receipt Note" },
-  { type: "PR", name: "Purchase Requisition" },
-  { type: "RFQ", name: "Request for Quotation" },
-  { type: "IND", name: "Indent Request" },
-  { type: "ISS", name: "Material Issue" },
-  { type: "GP", name: "Gate Pass" },
-  { type: "INSP", name: "QC Inspection" },
+  { type: "QT", name: "Customer Quotation" },
+  { type: "SO", name: "Sales Order" },
+  { type: "PK", name: "Packing List" },
+  { type: "DC", name: "Dispatch Challan" },
+  { type: "SI", name: "Sales Invoice" },
+  { type: "RV", name: "Customer Receipt" },
   { type: "DN", name: "Debit Note" },
   { type: "CN", name: "Credit Note" },
-  { type: "PAY", name: "Payment Voucher" },
 ];
 
 export default function DocSettingsForm({
@@ -135,7 +132,7 @@ export default function DocSettingsForm({
       <div>
         <h2 className="text-xl font-bold tracking-tight text-onyx">Document & Sequence Configuration</h2>
         <p className="text-xs text-onyx/50 mt-1">
-          Customize signatures, boilerplate notes, and sequencing schemes for purchase documents, indents, GRNs, and vouchers.
+          Customize signatures, boilerplate notes, and sequencing schemes for quotations, orders, packing lists, challans, and invoices.
         </p>
       </div>
 
@@ -158,22 +155,22 @@ export default function DocSettingsForm({
 
             <form onSubmit={handleSaveDocSettings} className="space-y-4">
               <div>
-                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Purchase Order Header Note</label>
+                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Customer Quotation Header Note</label>
                 <input
                   type="text"
                   value={poHeaderNote}
                   onChange={(e) => setPoHeaderNote(e.target.value)}
-                  placeholder="e.g. Please deliver items per terms specified."
+                  placeholder="e.g. Thank you for choosing us."
                   className="w-full text-xs p-2 bg-cream border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
                 />
               </div>
 
               <div>
-                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Purchase Order Footer note / Terms</label>
+                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Customer Quotation Footer note / Terms</label>
                 <textarea
                    value={poFooterNote}
                    onChange={(e) => setPoFooterNote(e.target.value)}
-                   placeholder="e.g. Terms & Conditions apply."
+                   placeholder="e.g. Interest will be charged at 18% p.a. for delayed payments."
                    className="w-full text-xs p-2 bg-cream border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron min-h-[60px]"
                 />
               </div>
@@ -199,7 +196,7 @@ export default function DocSettingsForm({
               </div>
 
               <div>
-                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Standard PO Declaration Text</label>
+                <label className="block text-[9px] uppercase font-bold text-onyx/50 mb-1">Standard Invoice Declaration Text</label>
                 <textarea
                   value={declaration}
                   onChange={(e) => setDeclaration(e.target.value)}
@@ -215,7 +212,7 @@ export default function DocSettingsForm({
                     type="text"
                     value={authorizedSignatory}
                     onChange={(e) => setAuthorizedSignatory(e.target.value)}
-                    placeholder="e.g. Stores & Purchase Director"
+                    placeholder="e.g. Sales Director"
                     className="w-full text-xs p-2 bg-cream border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron font-semibold"
                   />
                 </div>
