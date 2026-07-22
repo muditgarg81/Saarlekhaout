@@ -55,3 +55,56 @@ export async function getNextSequence(
     return `${prefix}${paddedValue}`;
   });
 }
+
+/**
+ * Safely restores (decrements) the sequence value if the deleted document's number
+ * matches the latest generated sequence value.
+ */
+export async function restoreSequence(
+  tx: any,
+  companyId: string,
+  docType: "SO" | "DC" | "SI" | "RV" | "SCN" | "SDN" | "QT" | "PK",
+  documentNumber: string
+) {
+  const sequence = await tx.docSequence.findUnique({
+    where: {
+      companyId_docType: {
+        companyId,
+        docType,
+      },
+    },
+  });
+  if (!sequence) return;
+
+  const scheme = await tx.numberingScheme.findUnique({
+    where: {
+      companyId_docType: {
+        companyId,
+        docType,
+      },
+    },
+  });
+
+  const prefix = scheme?.prefix ?? `${docType}-`;
+  const padding = scheme?.padding ?? 5;
+
+  const currentValue = sequence.nextValue - 1;
+  const expectedPadded = String(currentValue).padStart(padding, "0");
+  const expectedNumber = `${prefix}${expectedPadded}`;
+
+  if (documentNumber === expectedNumber) {
+    await tx.docSequence.update({
+      where: {
+        companyId_docType: {
+          companyId,
+          docType,
+        },
+      },
+      data: {
+        nextValue: {
+          decrement: 1,
+        },
+      },
+    });
+  }
+}

@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { DispatchStatus, EWayBillStatus, SoStatus, SoLineStatus, LedgerTxnType, SalesInvoiceStatus, EInvoiceStatus } from "@prisma/client";
-import { getNextSequence } from "@/lib/sequences";
+import { getNextSequence, restoreSequence } from "@/lib/sequences";
 import { postLedgerEntry } from "@/lib/stock";
 import { can } from "@/lib/rbac";
 
@@ -417,6 +417,9 @@ export async function deleteDispatch(dispatchId: string) {
           // Delete invoice lines and invoice
           await tx.salesInvoiceLine.deleteMany({ where: { invoiceId: assocInvoice.id } });
           await tx.salesInvoice.delete({ where: { id: assocInvoice.id } });
+
+          // Restore Sales Invoice sequence number
+          await restoreSequence(tx, companyId, "SI", assocInvoice.number);
         }
       }
 
@@ -434,6 +437,9 @@ export async function deleteDispatch(dispatchId: string) {
       await tx.dispatch.delete({
         where: { id: dispatchId },
       });
+
+      // Restore Delivery Challan sequence number
+      await restoreSequence(tx, companyId, "DC", dispatch.number);
 
       await logAudit(tx, companyId, actorId, "DELETE", "Dispatch", dispatchId, dispatch, null);
     }, {
