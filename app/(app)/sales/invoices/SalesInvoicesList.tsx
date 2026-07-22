@@ -6,8 +6,9 @@ import {
   createSalesInvoiceFromDispatch,
   generateEInvoice,
   cancelSalesInvoice,
+  updateSalesInvoice,
 } from "@/app/actions/salesInvoices";
-import { Plus, X, Receipt, QrCode, Ban, Printer } from "lucide-react";
+import { Plus, X, Receipt, QrCode, Ban, Printer, Pencil } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { generatePDF } from "../pdfGenerator";
@@ -26,6 +27,7 @@ interface Invoice {
   status: string;
   einvoiceStatus: string;
   irn: string | null;
+  otherCharges: number;
 }
 interface Dispatch { id: string; label: string }
 
@@ -63,6 +65,9 @@ export default function SalesInvoicesList({
   const [invoiceDate, setInvoiceDate] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
+  const [editInvoiceDate, setEditInvoiceDate] = useState("");
+  const [editOtherCharges, setEditOtherCharges] = useState<number>(0);
 
   const canInvoice = can(user, "sales.invoice") || ["ADMIN", "OWNER"].includes(user.role);
   const canEinvoice = can(user, "einvoice.generate") || ["ADMIN", "OWNER"].includes(user.role);
@@ -152,6 +157,20 @@ export default function SalesInvoicesList({
                     >
                       <Printer size={15} />
                     </button>
+                    {inv.status !== "CANCELLED" && inv.einvoiceStatus !== "GENERATED" && canInvoice && (
+                      <button
+                        title="Edit Invoice"
+                        onClick={() => {
+                          setEditingInvoice(inv);
+                          setEditInvoiceDate(inv.invoiceDate.split("T")[0]);
+                          setEditOtherCharges(inv.otherCharges);
+                          setError(null);
+                        }}
+                        className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70 cursor-pointer"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    )}
                     {canEinvoice && inv.einvoiceStatus === "PENDING" && (
                       <button title="Generate e-invoice (IRN)" onClick={() => act(() => generateEInvoice(inv.id))} className="p-1.5 rounded hover:bg-green-50 text-green-600">
                         <QrCode size={15} />
@@ -223,6 +242,53 @@ export default function SalesInvoicesList({
           }
         }}
       />
+
+      {/* Edit Invoice Modal */}
+      {editingInvoice && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-onyx/10">
+              <h2 className="font-heading font-bold text-onyx">Edit Invoice — {editingInvoice.number}</h2>
+              <button onClick={() => setEditingInvoice(null)} className="text-onyx/40 hover:text-onyx"><X size={20} /></button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-onyx/60 mb-1">Invoice date</label>
+                <input type="date" className={inputCls} value={editInvoiceDate} onChange={(e) => setEditInvoiceDate(e.target.value)} />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-onyx/60 mb-1">Other / Shipping Charges (₹)</label>
+                <input type="number" min={0} className={inputCls} value={editOtherCharges} onChange={(e) => setEditOtherCharges(Number(e.target.value))} />
+              </div>
+              {error && <div className="text-sm text-red-600">{error}</div>}
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-onyx/10">
+              <button onClick={() => setEditingInvoice(null)} className="px-4 py-2 text-sm text-onyx/60">Cancel</button>
+              <button
+                onClick={async () => {
+                  setLoading(true);
+                  setError(null);
+                  const res = await updateSalesInvoice(editingInvoice.id, {
+                    invoiceDate: editInvoiceDate || null,
+                    otherCharges: editOtherCharges,
+                  });
+                  setLoading(false);
+                  if (!res.success) {
+                    setError(res.error || "Failed to update invoice");
+                    return;
+                  }
+                  setEditingInvoice(null);
+                  router.refresh();
+                }}
+                disabled={loading}
+                className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold rounded-lg text-sm disabled:opacity-50"
+              >
+                {loading ? "Saving…" : "Save changes"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

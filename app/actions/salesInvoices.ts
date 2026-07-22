@@ -330,3 +330,73 @@ export async function cancelSalesInvoice(invoiceId: string, reason: string) {
     return { success: false, error: err.message || "Failed to cancel invoice" };
   }
 }
+
+export async function updateSalesInvoice(
+  invoiceId: string,
+  data: {
+    invoiceDate?: string | null;
+    otherCharges?: number;
+  }
+) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "sales.invoice")) {
+    return { success: false, error: "Forbidden: Missing sales.invoice permission" };
+  }
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const invoice = await db.salesInvoice.findFirst({
+      where: { id: invoiceId, companyId, deletedAt: null },
+    });
+    if (!invoice) return { success: false, error: "Invoice not found" };
+
+    if (invoice.status === SalesInvoiceStatus.CANCELLED) {
+      return { success: false, error: "Cannot edit a cancelled invoice" };
+    }
+
+    if (invoice.einvoiceStatus === EInvoiceStatus.GENERATED) {
+      return { success: false, error: "Cannot edit invoice after e-invoice (IRN) has been generated" };
+    }
+
+    const customer = await db.customer.findFirst({
+      where: { id: invoice.customerId, companyId },
+    });
+
+    const updated = await db.$transaction(async (tx) => {
+      const invoiceDateVal = data.invoiceDate ? new Date(data.invoiceDate) : invoice.invoiceDate;
+      const otherChargesVal = data.otherCharges !== undefined ? data.otherCharges : invoice.otherCharges;
+
+      const dueDate = new Date(invoiceDateVal);
+      dueDate.setDate(dueDate.getDate() + (customer?.creditDays || 0));
+
+      const rawTotal = invoice.taxableAmount + invoice.cgst + invoice.sgst + invoice.igst + otherChargesVal;
+      const totalAmount = Math.round(rawTotal);
+      const roundOff = +(totalAmount - rawTotal).toFixed(2);
+
+      const u = await tx.salesInvoice.update({
+        where: { id: invoiceId },
+        data: {
+          invoiceDate: invoiceDateVal,
+          dueDate,
+          otherCharges: otherChargesVal,
+          roundOff,
+          totalAmount,
+        },
+      });
+
+      await logAudit(tx, companyId, actorId, "UPDATE", "SalesInvoice", invoiceId, invoice, u);
+      return u;
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
+    });
+
+    revalidatePath("/sales/invoices");
+    return { success: true, invoice: updated };
+  } catch (err: any) {
+    console.error("Error updating sales invoice:", err);
+    return { success: false, error: err.message || "Failed to update sales invoice" };
+  }
+}
