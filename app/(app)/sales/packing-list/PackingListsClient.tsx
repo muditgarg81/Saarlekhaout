@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createPackingList, deletePackingList } from "@/app/actions/packingLists";
-import { Plus, X, Trash2, Boxes, FileText, Scale } from "lucide-react";
+import { createPackingList, deletePackingList, submitPackingListForApproval, approvePackingList } from "@/app/actions/packingLists";
+import { Plus, X, Trash2, Boxes, FileText, Scale, Check, Send } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
@@ -18,6 +18,7 @@ interface PackingListRow {
   soNumber: string | null;
   soId: string | null;
   status: string;
+  dcNumber: string | null;
   createdAt: string;
   lineCount: number;
   boxCount: number;
@@ -210,6 +211,29 @@ export default function PackingListsClient({
     router.refresh();
   };
 
+  const handleApprove = async (id: string) => {
+    if (!confirm("Are you sure you want to approve this packing list? This will automatically generate a Delivery Challan draft.")) return;
+    setLoading(true);
+    const res = await approvePackingList(id);
+    setLoading(false);
+    if (!res.success) {
+      alert(res.error || "Failed to approve packing list");
+    } else {
+      router.refresh();
+    }
+  };
+
+  const handleSubmitForApproval = async (id: string) => {
+    setLoading(true);
+    const res = await submitPackingListForApproval(id);
+    setLoading(false);
+    if (!res.success) {
+      alert(res.error || "Failed to submit packing list");
+    } else {
+      router.refresh();
+    }
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -258,18 +282,48 @@ export default function PackingListsClient({
                 <td className="px-4 py-3 text-right text-onyx/60">{p.totalGrossWeight.toFixed(2)}</td>
                 <td className="px-4 py-3 text-right text-onyx/60">{p.totalNetWeight.toFixed(2)}</td>
                 <td className="px-4 py-3">
-                  <span className="text-[10px] font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 border border-gray-200">
-                    {p.status}
+                  <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${
+                    p.status === "APPROVED" 
+                      ? "bg-green-50 text-green-700 border-green-200" 
+                      : p.status === "PENDING_APPROVAL" 
+                      ? "bg-amber-50 text-amber-700 border-amber-200" 
+                      : "bg-gray-100 text-gray-700 border-gray-200"
+                  }`}>
+                    {p.status} {p.dcNumber ? `(${p.dcNumber})` : ""}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    className="p-1 text-onyx/40 hover:text-red-600 rounded transition"
-                    title="Delete"
-                  >
-                    <Trash2 size={15} />
-                  </button>
+                <td className="px-4 py-3">
+                  <div className="flex items-center justify-end gap-1.5">
+                    {p.status === "DRAFT" && (
+                      <button
+                        onClick={() => handleSubmitForApproval(p.id)}
+                        className="p-1.5 text-onyx/60 hover:text-saffron-dark hover:bg-onyx/5 rounded transition flex items-center gap-1 text-xs font-bold"
+                        title="Submit for Approval"
+                      >
+                        <Send size={13} />
+                        <span>Submit</span>
+                      </button>
+                    )}
+                    {p.status === "PENDING_APPROVAL" && ["ADMIN", "OWNER", "STORE_MANAGER"].includes(user.role) && (
+                      <button
+                        onClick={() => handleApprove(p.id)}
+                        className="p-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 rounded transition flex items-center gap-1 text-xs font-bold"
+                        title="Approve & Generate DC"
+                      >
+                        <Check size={13} />
+                        <span>Approve</span>
+                      </button>
+                    )}
+                    {["DRAFT", "PENDING_APPROVAL"].includes(p.status) && (
+                      <button
+                        onClick={() => handleDelete(p.id)}
+                        className="p-1.5 text-onyx/40 hover:text-red-600 hover:bg-red-50 rounded transition"
+                        title="Delete"
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}

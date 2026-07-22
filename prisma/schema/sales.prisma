@@ -225,6 +225,7 @@ model SoLine {
   status        SoLineStatus   @default(OPEN)
   so            SalesOrder     @relation(fields: [soId], references: [id])
   dispatchLines DispatchLine[]
+  packingListLines PackingListLine[]
 
   @@schema("sales")
 }
@@ -547,6 +548,8 @@ model PackingListLine {
   netWeight     Float?      // kg
   dimensions    String?     // e.g. 12x12x12
   packingList   PackingList @relation(fields: [packingListId], references: [id])
+  soLineId      String?
+  soLine        SoLine?     @relation(fields: [soLineId], references: [id])
 
   @@schema("sales")
 }

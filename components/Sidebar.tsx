@@ -11,6 +11,8 @@ import {
   Settings, 
   FileText,
   ClipboardList,
+  ClipboardCheck,
+  BarChart3,
   ShieldCheck,
   Truck,
   Receipt,
@@ -632,6 +634,18 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 <TrendingUp size={18} />
                 <span>Receivables Reports</span>
               </Link>
+
+              <Link
+                href="/sales/reports/orders"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/sales/reports/orders")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <BarChart3 size={18} />
+                <span>Sales Order Reports</span>
+              </Link>
             </div>
           </div>
         )}
@@ -656,6 +670,18 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   <span>Dispatch & Delivery</span>
                 </Link>
               )}
+
+              <Link
+                href="/sales/packing-list/ready"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/sales/packing-list/ready")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <ClipboardCheck size={18} />
+                <span>Order Ready</span>
+              </Link>
 
               <Link
                 href="/sales/packing-list"
