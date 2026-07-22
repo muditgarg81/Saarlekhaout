@@ -3,9 +3,11 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createDispatch, generateEWayBill, markDispatchDelivered, deleteDispatch, updateDispatch, postDispatch } from "@/app/actions/dispatches";
-import { Plus, X, Truck, FileCheck2, PackageCheck, Pencil, Trash2, Eye, Send } from "lucide-react";
+import { Plus, X, Truck, FileCheck2, PackageCheck, Pencil, Trash2, Eye, Send, Printer } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { generatePDF } from "../pdfGenerator";
+import CopySelectorModal from "@/components/CopySelectorModal";
 
 interface DispatchRow {
   id: string;
@@ -52,15 +54,18 @@ export default function DispatchList({
   stores,
   packingLists,
   user,
+  company,
 }: {
   initialDispatches: DispatchRow[];
   openOrders: OpenOrder[];
   stores: StoreOpt[];
   packingLists: PackingListOpt[];
   user: SessionUser;
+  company: any;
 }) {
   const router = useRouter();
   const [rows] = useState(initialDispatches);
+  const [printTarget, setPrintTarget] = useState<any | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -226,6 +231,15 @@ export default function DispatchList({
                     <button title="Review Details" onClick={() => setReviewDispatch(d)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
                       <Eye size={15} />
                     </button>
+                    {d.status !== "DRAFT" && (
+                      <button
+                        title="Export PDF / Print"
+                        onClick={() => setPrintTarget(d)}
+                        className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70 cursor-pointer"
+                      >
+                        <Printer size={15} />
+                      </button>
+                    )}
                     {d.status === "DRAFT" && canDispatch && (
                       <>
                         <button
@@ -468,14 +482,40 @@ export default function DispatchList({
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end pt-4 border-t border-onyx/5">
-              <button onClick={() => setReviewDispatch(null)} className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs shadow-sm">
+            <div className="flex justify-between items-center pt-4 border-t border-onyx/5">
+              <div>
+                {reviewDispatch.status !== "DRAFT" && (
+                  <button
+                    onClick={() => {
+                      setPrintTarget(reviewDispatch);
+                      setReviewDispatch(null);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 border border-onyx/15 hover:bg-cream-light/30 text-onyx/80 font-bold rounded-lg text-xs transition cursor-pointer"
+                  >
+                    <Printer size={14} /> Print / Export Copies
+                  </button>
+                )}
+              </div>
+              <button onClick={() => setReviewDispatch(null)} className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs shadow-sm cursor-pointer">
                 Close
               </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Print Copy Selector Modal */}
+      <CopySelectorModal
+        isOpen={!!printTarget}
+        docNumber={printTarget?.number || ""}
+        onClose={() => setPrintTarget(null)}
+        onConfirm={async (selected) => {
+          if (printTarget) {
+            await generatePDF("Delivery Challan", printTarget, company, selected);
+            setPrintTarget(null);
+          }
+        }}
+      />
     </div>
   );
 }

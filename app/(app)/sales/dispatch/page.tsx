@@ -8,11 +8,19 @@ export default async function DispatchPage() {
   if (!user) redirect("/auth/signin");
   const companyId = user.companyId;
 
-  const [dispatches, openOrders, stores, items, customers, packingLists] = await Promise.all([
+  const [dispatches, openOrders, stores, items, customers, packingLists, companySettings, companyData] = await Promise.all([
     db.dispatch.findMany({
       where: { companyId, deletedAt: null },
       orderBy: { createdAt: "desc" },
-      include: { lines: true, so: { select: { number: true } }, packingList: { select: { number: true } } },
+      include: {
+        lines: true,
+        so: {
+          include: {
+            customer: true,
+          },
+        },
+        packingList: { select: { number: true } },
+      },
       take: 200,
     }),
     db.salesOrder.findMany({
@@ -24,16 +32,38 @@ export default async function DispatchPage() {
     db.item.findMany({ where: { companyId, deletedAt: null }, select: { id: true, code: true, name: true } }),
     db.customer.findMany({ where: { companyId }, select: { id: true, name: true } }),
     db.packingList.findMany({ where: { companyId, deletedAt: null }, select: { id: true, number: true, soId: true } }),
+    db.companyDocumentSettings.findUnique({ where: { companyId } }),
+    db.company.findUnique({
+      where: { id: companyId },
+      select: { name: true, address: true, gstin: true, pan: true, cin: true, contactEmail: true, contactPhone: true, city: true, governingPlace: true, logoUrl: true },
+    }),
   ]);
 
   const itemName = new Map(items.map((i) => [i.id, `${i.name} (${i.code})`]));
   const custName = new Map(customers.map((c) => [c.id, c.name]));
 
+  const company = companyData
+    ? {
+        name: companyData.name,
+        logoUrl: companyData.logoUrl,
+        address: companyData.address,
+        city: companyData.city,
+        governingPlace: companyData.governingPlace,
+        gstin: companyData.gstin,
+        pan: companyData.pan,
+        contactEmail: companyData.contactEmail,
+        contactPhone: companyData.contactPhone,
+        authorizedSignatory: companySettings?.authorizedSignatory || "Authorized Signatory",
+      }
+    : null;
+
   const mappedDispatches = dispatches.map((d) => ({
     id: d.id,
     number: d.number,
     soNumber: d.so?.number || null,
-    customer: custName.get(d.customerId) || "—",
+    customer: d.so?.customer.name || custName.get(d.customerId) || "—",
+    customerGstin: d.so?.customer.gstin || null,
+    customerPan: d.so?.customer.pan || null,
     status: d.status,
     dispatchDate: d.dispatchDate.toISOString(),
     storeId: d.storeId,
@@ -45,6 +75,9 @@ export default async function DispatchPage() {
     ewayBillStatus: d.ewayBillStatus,
     lineCount: d.lines.length,
     packingListNumber: d.packingList?.number || null,
+    billingAddress: d.so?.billingAddress || "—",
+    shippingAddress: d.so?.shippingAddress || "—",
+    termsConditions: d.so?.termsConditions || "—",
     lines: d.lines.map((l) => ({
       id: l.id,
       itemId: l.itemId,
@@ -76,6 +109,7 @@ export default async function DispatchPage() {
       stores={stores}
       packingLists={packingLists}
       user={user as any}
+      company={company}
     />
   );
 }

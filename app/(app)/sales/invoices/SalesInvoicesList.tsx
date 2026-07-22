@@ -7,9 +7,11 @@ import {
   generateEInvoice,
   cancelSalesInvoice,
 } from "@/app/actions/salesInvoices";
-import { Plus, X, Receipt, QrCode, Ban } from "lucide-react";
+import { Plus, X, Receipt, QrCode, Ban, Printer } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
+import { generatePDF } from "../pdfGenerator";
+import CopySelectorModal from "@/components/CopySelectorModal";
 
 interface Invoice {
   id: string;
@@ -46,13 +48,16 @@ export default function SalesInvoicesList({
   initialInvoices,
   eligibleDispatches,
   user,
+  company,
 }: {
   initialInvoices: Invoice[];
   eligibleDispatches: Dispatch[];
   user: SessionUser;
+  company: any;
 }) {
   const router = useRouter();
   const [invoices] = useState(initialInvoices);
+  const [printTarget, setPrintTarget] = useState<any | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [dispatchId, setDispatchId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState("");
@@ -140,6 +145,13 @@ export default function SalesInvoicesList({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
+                    <button
+                      title="Export PDF / Print"
+                      onClick={() => setPrintTarget(inv)}
+                      className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70 cursor-pointer"
+                    >
+                      <Printer size={15} />
+                    </button>
                     {canEinvoice && inv.einvoiceStatus === "PENDING" && (
                       <button title="Generate e-invoice (IRN)" onClick={() => act(() => generateEInvoice(inv.id))} className="p-1.5 rounded hover:bg-green-50 text-green-600">
                         <QrCode size={15} />
@@ -198,6 +210,19 @@ export default function SalesInvoicesList({
           </div>
         </div>
       )}
+
+      {/* Print Copy Selector Modal */}
+      <CopySelectorModal
+        isOpen={!!printTarget}
+        docNumber={printTarget?.number || ""}
+        onClose={() => setPrintTarget(null)}
+        onConfirm={async (selected) => {
+          if (printTarget) {
+            await generatePDF("Sales Invoice", printTarget, company, selected);
+            setPrintTarget(null);
+          }
+        }}
+      />
     </div>
   );
 }
