@@ -193,6 +193,9 @@ export async function createDispatch(data: z.infer<typeof dispatchSchema>) {
 
       await logAudit(tx, companyId, actorId, "DISPATCH", "Dispatch", dispatch.id, null, dispatch);
       return dispatch;
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/sales/dispatch");
@@ -293,6 +296,9 @@ export async function generateEWayBill(dispatchId: string) {
       });
       await logAudit(tx, companyId, actorId, "EWAYBILL_GENERATE", "Dispatch", dispatchId, { ewayBillStatus: dispatch.ewayBillStatus }, { ewayBillNo: ewbNo });
       return updated;
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/sales/dispatch");
@@ -322,6 +328,9 @@ export async function markDispatchDelivered(dispatchId: string) {
     await db.$transaction(async (tx) => {
       await tx.dispatch.update({ where: { id: dispatchId }, data: { status: DispatchStatus.DELIVERED } });
       await logAudit(tx, companyId, actorId, "DELIVERED", "Dispatch", dispatchId, { status: dispatch.status }, { status: DispatchStatus.DELIVERED });
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/sales/dispatch");
@@ -347,14 +356,23 @@ export async function deleteDispatch(dispatchId: string) {
     });
     if (!dispatch) return { success: false, error: "Dispatch not found" };
 
+    // Pre-fetch data outside the transaction to reduce transaction duration and prevent timeouts
+    const lines = await db.dispatchLine.findMany({
+      where: { dispatchId },
+    });
+
+    const assocInvoice = await db.salesInvoice.findFirst({
+      where: { dispatchId, deletedAt: null },
+    });
+
+    // Check invoice status outside transaction before starting
+    if (assocInvoice && assocInvoice.status !== "DRAFT") {
+      throw new Error(`Cannot delete dispatch because Tax Invoice ${assocInvoice.number} has already been raised/issued.`);
+    }
+
     await db.$transaction(async (tx) => {
       // 1. If not draft (DISPATCHED or DELIVERED), roll back stocks and SO quantities
       if (dispatch.status !== DispatchStatus.DRAFT) {
-        // Find dispatch lines
-        const lines = await tx.dispatchLine.findMany({
-          where: { dispatchId },
-        });
-
         // Restore SO lines dispatchedQty and status
         for (const dl of lines) {
           if (dl.soLineId) {
@@ -394,18 +412,11 @@ export async function deleteDispatch(dispatchId: string) {
           where: { refType: "DISPATCH", refId: dispatchId },
         });
 
-        // Delete or cancel associated SalesInvoice if it is still a DRAFT
-        const assocInvoice = await tx.salesInvoice.findFirst({
-          where: { dispatchId, deletedAt: null },
-        });
+        // Delete associated SalesInvoice if it is still a DRAFT
         if (assocInvoice) {
-          if (assocInvoice.status === "DRAFT") {
-            // Delete invoice lines and invoice
-            await tx.salesInvoiceLine.deleteMany({ where: { invoiceId: assocInvoice.id } });
-            await tx.salesInvoice.delete({ where: { id: assocInvoice.id } });
-          } else {
-            throw new Error(`Cannot delete dispatch because Tax Invoice ${assocInvoice.number} has already been raised/issued.`);
-          }
+          // Delete invoice lines and invoice
+          await tx.salesInvoiceLine.deleteMany({ where: { invoiceId: assocInvoice.id } });
+          await tx.salesInvoice.delete({ where: { id: assocInvoice.id } });
         }
       }
 
@@ -425,6 +436,9 @@ export async function deleteDispatch(dispatchId: string) {
       });
 
       await logAudit(tx, companyId, actorId, "DELETE", "Dispatch", dispatchId, dispatch, null);
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/sales/dispatch");
@@ -475,6 +489,9 @@ export async function updateDispatch(
       });
       await logAudit(tx, companyId, actorId, "UPDATE", "Dispatch", dispatchId, dispatch, u);
       return u;
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/sales/dispatch");
@@ -586,6 +603,9 @@ export async function postDispatch(dispatchId: string) {
       await createDraftInvoiceInternal(tx, dispatchId, invoiceNumber, companyId, actorId);
 
       await logAudit(tx, companyId, actorId, "POST", "Dispatch", dispatchId, { status: "DRAFT" }, { status: "DISPATCHED" });
+    }, {
+      maxWait: 15000,
+      timeout: 30000,
     });
 
     revalidatePath("/sales/dispatch");
