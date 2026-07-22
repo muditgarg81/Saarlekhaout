@@ -35,7 +35,7 @@ export default async function QuotationsPage() {
     }),
     db.company.findUnique({
       where: { id: companyId },
-      select: { name: true, address: true, gstin: true, pan: true, cin: true, contactEmail: true, contactPhone: true, city: true, governingPlace: true },
+      select: { name: true, address: true, gstin: true, pan: true, cin: true, contactEmail: true, contactPhone: true, city: true, governingPlace: true, logoUrl: true },
     }),
   ]);
 
