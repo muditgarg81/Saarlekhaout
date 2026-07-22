@@ -59,8 +59,23 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
     const fullLogoUrl = window.location.origin + company.logoUrl;
     const img = await loadImage(fullLogoUrl);
     if (img) {
-      doc.addImage(img, "JPEG", 14, 15, 32, 16);
-      startX = 50; 
+      const originalWidth = img.width || 1;
+      const originalHeight = img.height || 1;
+      const aspectRatio = originalWidth / originalHeight;
+      
+      let imgHeight = 20;
+      let imgWidth = imgHeight * aspectRatio;
+      
+      if (imgWidth > 32) {
+        imgWidth = 32;
+        imgHeight = imgWidth / aspectRatio;
+      }
+      
+      const textCenterY = 30; // Center of text block (y = 20 to y = 40)
+      const logoY = textCenterY - imgHeight / 2;
+      
+      doc.addImage(img, "JPEG", 14, logoY, imgWidth, imgHeight);
+      startX = 14 + imgWidth + 6; 
     }
   }
   
@@ -80,7 +95,8 @@ export async function generatePDF(docType: "Quotation" | "Sales Order", data: an
     company?.governingPlace
   ].filter(Boolean).join(", ");
 
-  doc.text(companyFullAddress || "Address not configured.", startX, 24.5, { maxWidth: startX === 14 ? 110 : 80 });
+  const maxTextWidth = 196 - startX;
+  doc.text(companyFullAddress || "Address not configured.", startX, 24.5, { maxWidth: maxTextWidth });
   
   const detailsY = startX === 14 ? 35 : 36;
   doc.text(`GSTIN: ${company?.gstin || "N/A"} | PAN: ${company?.pan || "N/A"}`, startX, detailsY);
