@@ -327,3 +327,207 @@ export async function markDispatchDelivered(dispatchId: string) {
     return { success: false, error: err.message || "Failed to update dispatch" };
   }
 }
+
+export async function deleteDispatch(dispatchId: string) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "dispatch.create")) {
+    return { success: false, error: "Forbidden: Missing dispatch.create permission" };
+  }
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const dispatch = await db.dispatch.findFirst({
+      where: { id: dispatchId, companyId, deletedAt: null },
+    });
+    if (!dispatch) return { success: false, error: "Dispatch not found" };
+    if (dispatch.status !== DispatchStatus.DRAFT) {
+      return { success: false, error: "Only draft dispatches can be deleted" };
+    }
+
+    await db.$transaction(async (tx) => {
+      if (dispatch.packingListId) {
+        await tx.packingList.update({
+          where: { id: dispatch.packingListId },
+          data: { status: "DRAFT" },
+        });
+      }
+
+      await tx.dispatchLine.deleteMany({
+        where: { dispatchId },
+      });
+
+      await tx.dispatch.delete({
+        where: { id: dispatchId },
+      });
+
+      await logAudit(tx, companyId, actorId, "DELETE", "Dispatch", dispatchId, dispatch, null);
+    });
+
+    revalidatePath("/sales/dispatch");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error deleting dispatch:", err);
+    return { success: false, error: err.message || "Failed to delete dispatch" };
+  }
+}
+
+export async function updateDispatch(
+  dispatchId: string,
+  data: {
+    storeId?: string | null;
+    vehicleNo?: string | null;
+    transporterName?: string | null;
+    lrNo?: string | null;
+    distanceKm?: number | null;
+    dispatchDate?: string | null;
+  }
+) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "dispatch.create")) {
+    return { success: false, error: "Forbidden: Missing dispatch.create permission" };
+  }
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const dispatch = await db.dispatch.findFirst({
+      where: { id: dispatchId, companyId, deletedAt: null },
+    });
+    if (!dispatch) return { success: false, error: "Dispatch not found" };
+    if (dispatch.status !== DispatchStatus.DRAFT) {
+      return { success: false, error: "Only draft dispatches can be updated" };
+    }
+
+    const updated = await db.$transaction(async (tx) => {
+      const u = await tx.dispatch.update({
+        where: { id: dispatchId },
+        data: {
+          storeId: data.storeId || null,
+          vehicleNo: data.vehicleNo || null,
+          transporterName: data.transporterName || null,
+          lrNo: data.lrNo || null,
+          distanceKm: data.distanceKm ?? null,
+          dispatchDate: data.dispatchDate ? new Date(data.dispatchDate) : dispatch.dispatchDate,
+        },
+      });
+      await logAudit(tx, companyId, actorId, "UPDATE", "Dispatch", dispatchId, dispatch, u);
+      return u;
+    });
+
+    revalidatePath("/sales/dispatch");
+    return { success: true, dispatch: updated };
+  } catch (err: any) {
+    console.error("Error updating dispatch:", err);
+    return { success: false, error: err.message || "Failed to update dispatch" };
+  }
+}
+
+export async function postDispatch(dispatchId: string) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "dispatch.create")) {
+    return { success: false, error: "Forbidden: Missing dispatch.create permission" };
+  }
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const dispatch = await db.dispatch.findFirst({
+      where: { id: dispatchId, companyId, deletedAt: null },
+      include: { lines: true },
+    });
+    if (!dispatch) return { success: false, error: "Dispatch not found" };
+    if (dispatch.status !== DispatchStatus.DRAFT) {
+      return { success: false, error: "Only draft dispatches can be posted" };
+    }
+
+    const soId = dispatch.soId;
+    if (!soId) return { success: false, error: "Linked Sales Order not found on dispatch" };
+
+    const so = await db.salesOrder.findFirst({
+      where: { id: soId, companyId, deletedAt: null },
+      include: { lines: true },
+    });
+    if (!so) return { success: false, error: "Sales Order not found" };
+
+    const storeId = dispatch.storeId;
+    if (!storeId) return { success: false, error: "No store selected for stock issue" };
+
+    const lineById = new Map(so.lines.map((l) => [l.id, l]));
+    for (const dl of dispatch.lines) {
+      if (!dl.soLineId) continue;
+      const sol = lineById.get(dl.soLineId);
+      if (!sol) return { success: false, error: `SO Line not found for dispatch line` };
+      const open = sol.qty - sol.dispatchedQty;
+      if (dl.qty > open + 1e-9) {
+        return {
+          success: false,
+          error: `Dispatch qty ${dl.qty} exceeds open balance ${open} on item ${sol.itemId}`,
+        };
+      }
+    }
+
+    await db.$transaction(async (tx) => {
+      await tx.dispatch.update({
+        where: { id: dispatchId },
+        data: { status: DispatchStatus.DISPATCHED },
+      });
+
+      for (const dl of dispatch.lines) {
+        if (!dl.soLineId) continue;
+        const sol = lineById.get(dl.soLineId)!;
+
+        const newDispatchedQty = sol.dispatchedQty + dl.qty;
+        const lineStatus = rollupSoLineStatus(sol.qty, newDispatchedQty);
+
+        await tx.soLine.update({
+          where: { id: dl.soLineId },
+          data: {
+            dispatchedQty: newDispatchedQty,
+            status: lineStatus,
+          },
+        });
+
+        await postLedgerEntry(tx, {
+          companyId,
+          itemId: dl.itemId,
+          storeId,
+          txnType: LedgerTxnType.ISSUE,
+          qty: -Math.abs(dl.qty),
+          refType: "DISPATCH",
+          refId: dispatch.id,
+          createdById: actorId,
+        });
+      }
+
+      const updatedLines = await tx.soLine.findMany({
+        where: { soId: so.id },
+      });
+      const allDispatched = updatedLines.every((l) => l.dispatchedQty >= l.qty - 1e-9);
+      const anyDispatched = updatedLines.some((l) => l.dispatchedQty > 0);
+
+      let newStatus: SoStatus = SoStatus.CONFIRMED;
+      if (allDispatched) {
+        newStatus = SoStatus.DISPATCHED;
+      } else if (anyDispatched) {
+        newStatus = SoStatus.PARTIALLY_DISPATCHED;
+      }
+
+      await tx.salesOrder.update({
+        where: { id: so.id },
+        data: { status: newStatus },
+      });
+
+      await logAudit(tx, companyId, actorId, "POST", "Dispatch", dispatchId, { status: "DRAFT" }, { status: "DISPATCHED" });
+    });
+
+    revalidatePath("/sales/dispatch");
+    return { success: true };
+  } catch (err: any) {
+    console.error("Error posting dispatch:", err);
+    return { success: false, error: err.message || "Failed to post dispatch" };
+  }
+}

@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createDispatch, generateEWayBill, markDispatchDelivered } from "@/app/actions/dispatches";
-import { Plus, X, Truck, FileCheck2, PackageCheck } from "lucide-react";
+import { createDispatch, generateEWayBill, markDispatchDelivered, deleteDispatch, updateDispatch, postDispatch } from "@/app/actions/dispatches";
+import { Plus, X, Truck, FileCheck2, PackageCheck, Pencil, Trash2, Eye, Send } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 
@@ -14,11 +14,16 @@ interface DispatchRow {
   customer: string;
   status: string;
   dispatchDate: string;
+  storeId: string | null;
   vehicleNo: string | null;
+  transporterName: string | null;
+  lrNo: string | null;
+  distanceKm: number | null;
   ewayBillNo: string | null;
   ewayBillStatus: string;
   lineCount: number;
   packingListNumber: string | null;
+  lines: { id: string; itemId: string; itemName: string; qty: number; batchNo: string | null }[];
 }
 interface OpenLine { soLineId: string; itemId: string; itemName: string; open: number; rate: number }
 interface OpenOrder { id: string; number: string; customer: string; lines: OpenLine[] }
@@ -69,6 +74,9 @@ export default function DispatchList({
   const [packingListId, setPackingListId] = useState("");
   const [qtys, setQtys] = useState<Record<string, number>>({});
 
+  const [reviewDispatch, setReviewDispatch] = useState<DispatchRow | null>(null);
+  const [editingDispatchId, setEditingDispatchId] = useState<string | null>(null);
+
   const canDispatch = can(user, "dispatch.create") || ["ADMIN", "OWNER"].includes(user.role);
   const canEway = can(user, "ewaybill.generate") || ["ADMIN", "OWNER"].includes(user.role);
 
@@ -83,10 +91,51 @@ export default function DispatchList({
     setQtys(init);
   };
 
+  const resetForm = () => {
+    setSoId("");
+    setPackingListId("");
+    setStoreId("");
+    setVehicleNo("");
+    setTransporterName("");
+    setLrNo("");
+    setDistanceKm(0);
+    setQtys({});
+  };
+
+  const handleCancelModal = () => {
+    setIsOpen(false);
+    setEditingDispatchId(null);
+    resetForm();
+  };
+
   const submit = async () => {
-    if (!order) return;
     setLoading(true);
     setError(null);
+
+    if (editingDispatchId) {
+      const res = await updateDispatch(editingDispatchId, {
+        storeId: storeId || null,
+        vehicleNo: vehicleNo || null,
+        transporterName: transporterName || null,
+        lrNo: lrNo || null,
+        distanceKm: distanceKm || null,
+      });
+      setLoading(false);
+      if (!res.success) {
+        setError(res.error || "Failed to update dispatch");
+        return;
+      }
+      setIsOpen(false);
+      setEditingDispatchId(null);
+      resetForm();
+      router.refresh();
+      return;
+    }
+
+    if (!order) {
+      setLoading(false);
+      return;
+    }
     const lines = order.lines
       .map((l) => ({ soLineId: l.soLineId, itemId: l.itemId, qty: Number(qtys[l.soLineId] || 0) }))
       .filter((l) => l.qty > 0);
@@ -111,9 +160,7 @@ export default function DispatchList({
       return;
     }
     setIsOpen(false);
-    setSoId("");
-    setPackingListId("");
-    setQtys({});
+    resetForm();
     router.refresh();
   };
 
@@ -176,6 +223,52 @@ export default function DispatchList({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
+                    <button title="Review Details" onClick={() => setReviewDispatch(d)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
+                      <Eye size={15} />
+                    </button>
+                    {d.status === "DRAFT" && canDispatch && (
+                      <>
+                        <button
+                          title="Edit Dispatch"
+                          onClick={() => {
+                            setEditingDispatchId(d.id);
+                            setSoId(d.soNumber || "");
+                            setPackingListId(d.packingListNumber || "");
+                            setStoreId(d.storeId || "");
+                            setVehicleNo(d.vehicleNo || "");
+                            setTransporterName(d.transporterName || "");
+                            setLrNo(d.lrNo || "");
+                            setDistanceKm(d.distanceKm || 0);
+                            setIsOpen(true);
+                          }}
+                          className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
+                        >
+                          <Pencil size={15} />
+                        </button>
+                        <button
+                          title="Post / Confirm Dispatch"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to post dispatch challan ${d.number}? This will update stock levels and Sales Order fulfillment.`)) {
+                              act(() => postDispatch(d.id));
+                            }
+                          }}
+                          className="p-1.5 rounded hover:bg-green-50 text-green-600"
+                        >
+                          <Send size={15} />
+                        </button>
+                        <button
+                          title="Delete Draft"
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete draft dispatch ${d.number}? The linked packing list status will revert to DRAFT.`)) {
+                              act(() => deleteDispatch(d.id));
+                            }
+                          }}
+                          className="p-1.5 rounded hover:bg-red-50 text-red-600"
+                        >
+                          <Trash2 size={15} />
+                        </button>
+                      </>
+                    )}
                     {canEway && ["PENDING"].includes(d.ewayBillStatus) && (
                       <button title="Generate e-way bill" onClick={() => act(() => generateEWayBill(d.id))} className="p-1.5 rounded hover:bg-green-50 text-green-600">
                         <FileCheck2 size={15} />
@@ -201,18 +294,23 @@ export default function DispatchList({
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-onyx/10 sticky top-0 bg-white">
-              <h2 className="font-heading font-bold text-onyx">New Dispatch</h2>
-              <button onClick={() => setIsOpen(false)} className="text-onyx/40 hover:text-onyx"><X size={20} /></button>
+              <h2 className="font-heading font-bold text-onyx">{editingDispatchId ? "Edit Dispatch Details" : "New Dispatch"}</h2>
+              <button onClick={handleCancelModal} className="text-onyx/40 hover:text-onyx"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <SearchableSelect
-                    options={openOrders.map((o) => ({ value: o.id, label: `${o.number} — ${o.customer}` }))}
-                    value={soId}
-                    onChange={(val) => pickOrder(val)}
-                    placeholder="Select order..."
-                  />
+                  <label className="block text-xs font-semibold text-onyx/60 mb-1">Sales Order</label>
+                  {editingDispatchId ? (
+                    <input type="text" className={`${inputCls} bg-cream-dark/10 border-onyx/10 text-onyx/50 cursor-not-allowed`} value={soId} disabled readOnly />
+                  ) : (
+                    <SearchableSelect
+                      options={openOrders.map((o) => ({ value: o.id, label: `${o.number} — ${o.customer}` }))}
+                      value={soId}
+                      onChange={(val) => pickOrder(val)}
+                      placeholder="Select order..."
+                    />
+                  )}
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Issue from store</label>
@@ -228,16 +326,20 @@ export default function DispatchList({
               {soId && (
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Link Packing List (Supporting Document)</label>
-                  <select className={inputCls} value={packingListId} onChange={(e) => setPackingListId(e.target.value)}>
-                    <option value="">-- No Packing List --</option>
-                    {packingLists.filter(p => p.soId === soId).map((p) => (
-                      <option key={p.id} value={p.id}>{p.number}</option>
-                    ))}
-                  </select>
+                  {editingDispatchId ? (
+                    <input type="text" className={`${inputCls} bg-cream-dark/10 border-onyx/10 text-onyx/50 cursor-not-allowed`} value={packingListId || "—"} disabled readOnly />
+                  ) : (
+                    <select className={inputCls} value={packingListId} onChange={(e) => setPackingListId(e.target.value)}>
+                      <option value="">-- No Packing List --</option>
+                      {packingLists.filter(p => p.soId === soId).map((p) => (
+                        <option key={p.id} value={p.id}>{p.number}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               )}
 
-              {order && (
+              {!editingDispatchId && order && (
                 <div className="border border-onyx/10 rounded-lg overflow-hidden">
                   <table className="w-full text-xs">
                     <thead className="bg-cream-light text-onyx/60 uppercase">
@@ -293,9 +395,82 @@ export default function DispatchList({
               {error && <div className="text-sm text-red-600">{error}</div>}
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-onyx/10">
-              <button onClick={() => setIsOpen(false)} className="px-4 py-2 text-sm text-onyx/60">Cancel</button>
-              <button onClick={submit} disabled={loading || !soId} className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold rounded-lg text-sm disabled:opacity-50">
-                {loading ? "Dispatching…" : "Create dispatch"}
+              <button onClick={handleCancelModal} className="px-4 py-2 text-sm text-onyx/60">Cancel</button>
+              <button onClick={submit} disabled={loading || (!editingDispatchId && !soId)} className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold rounded-lg text-sm disabled:opacity-50">
+                {loading ? "Saving…" : editingDispatchId ? "Update Details" : "Create dispatch"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Details Modal */}
+      {reviewDispatch && (
+        <div className="fixed inset-0 bg-black/45 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 font-body">
+            {/* Header */}
+            <div className="flex justify-between items-center pb-4 border-b border-onyx/5 mb-6">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-heading font-bold text-onyx font-sans">Dispatch Challan {reviewDispatch.number}</h3>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border uppercase tracking-wider ${STATUS_STYLES[reviewDispatch.status]}`}>
+                    {reviewDispatch.status}
+                  </span>
+                </div>
+                <p className="text-[11px] text-onyx/50 mt-1">
+                  Created on {new Date(reviewDispatch.dispatchDate).toLocaleDateString("en-IN")}
+                </p>
+              </div>
+              <button onClick={() => setReviewDispatch(null)} className="text-onyx/40 hover:text-onyx cursor-pointer p-1">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Details Grid */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+              {/* Left Column */}
+              <div className="space-y-2 bg-cream-light/10 p-4 border border-onyx/5 rounded-xl text-xs">
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">Customer:</span><span className="font-semibold text-onyx">{reviewDispatch.customer}</span></div>
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">Sales Order:</span><span className="font-semibold text-onyx">{reviewDispatch.soNumber || "—"}</span></div>
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">Packing List:</span><span className="font-semibold text-onyx">{reviewDispatch.packingListNumber || "—"}</span></div>
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">Issuing Store:</span><span className="font-semibold text-onyx">{stores.find(s => s.id === reviewDispatch.storeId)?.name || "Default Store"}</span></div>
+              </div>
+
+              {/* Right Column */}
+              <div className="space-y-2 bg-cream-light/10 p-4 border border-onyx/5 rounded-xl text-xs">
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">Vehicle No:</span><span className="font-semibold text-onyx">{reviewDispatch.vehicleNo || "—"}</span></div>
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">Transporter:</span><span className="font-semibold text-onyx">{reviewDispatch.transporterName || "—"}</span></div>
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">LR / Docket No:</span><span className="font-semibold text-onyx">{reviewDispatch.lrNo || "—"}</span></div>
+                <div className="flex justify-between"><span className="text-onyx/50 font-medium">Distance (km):</span><span className="font-semibold text-onyx">{reviewDispatch.distanceKm || "—"}</span></div>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <div className="border border-onyx/10 rounded-xl overflow-hidden mb-6">
+              <table className="w-full text-xs">
+                <thead className="bg-cream-light text-onyx/60 uppercase">
+                  <tr>
+                    <th className="text-left px-4 py-2.5 font-bold">Item Description</th>
+                    <th className="text-right px-4 py-2.5 font-bold">Qty Dispatched</th>
+                    <th className="text-left px-4 py-2.5 font-bold">Batch No</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-onyx/5">
+                  {reviewDispatch.lines?.map((line, idx) => (
+                    <tr key={line.id || idx} className="hover:bg-cream-light/10">
+                      <td className="px-4 py-3 font-semibold text-onyx">{line.itemName}</td>
+                      <td className="px-4 py-3 text-right font-mono font-bold text-onyx">{line.qty}</td>
+                      <td className="px-4 py-3 font-mono text-onyx/60">{line.batchNo || "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-end pt-4 border-t border-onyx/5">
+              <button onClick={() => setReviewDispatch(null)} className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs shadow-sm">
+                Close
               </button>
             </div>
           </div>

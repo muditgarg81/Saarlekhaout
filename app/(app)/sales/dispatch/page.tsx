@@ -36,11 +36,22 @@ export default async function DispatchPage() {
     customer: custName.get(d.customerId) || "—",
     status: d.status,
     dispatchDate: d.dispatchDate.toISOString(),
+    storeId: d.storeId,
     vehicleNo: d.vehicleNo,
+    transporterName: d.transporterName,
+    lrNo: d.lrNo,
+    distanceKm: d.distanceKm,
     ewayBillNo: d.ewayBillNo,
     ewayBillStatus: d.ewayBillStatus,
     lineCount: d.lines.length,
     packingListNumber: d.packingList?.number || null,
+    lines: d.lines.map((l) => ({
+      id: l.id,
+      itemId: l.itemId,
+      itemName: itemName.get(l.itemId) || l.itemId,
+      qty: l.qty,
+      batchNo: l.batchNo,
+    })),
   }));
 
   const mappedOrders = openOrders.map((o) => ({

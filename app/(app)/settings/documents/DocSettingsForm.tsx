@@ -78,8 +78,8 @@ export default function DocSettingsForm({
   // Schemes states
   const [schemes, setSchemes] = useState<Record<string, { prefix: string; padding: number; resetOnFY: boolean; nextValue: number }>>(
     DOC_TYPES.reduce((acc, dt) => {
-      const match = initialSchemes.find((s) => s.docType === dt.type);
-      const seqMatch = initialSequences.find((s) => s.docType === dt.type);
+      const match = (initialSchemes || []).find((s) => s.docType === dt.type);
+      const seqMatch = (initialSequences || []).find((s) => s.docType === dt.type);
       acc[dt.type] = {
         prefix: match?.prefix || `${dt.type}-`,
         padding: match?.padding || 5,
