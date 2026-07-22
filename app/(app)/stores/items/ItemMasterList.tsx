@@ -12,7 +12,9 @@ import {
   updateDepartment,
   deleteDepartment,
   updateReorderLevels,
-  quickCreateCategory
+  quickCreateCategory,
+  updateCategory,
+  deleteCategory
 } from "@/app/actions/items";
 import { useRouter } from "next/navigation";
 import { SearchableSelect } from "@/components/SearchableSelect";
@@ -99,7 +101,7 @@ export default function ItemMasterList({ initialItems, categories, departments }
   const [reordersSuccess, setReordersSuccess] = useState<string | null>(null);
   
   // Tab states
-  const [activeTab, setActiveTab] = useState<"items" | "departments">("items");
+  const [activeTab, setActiveTab] = useState<"items" | "departments" | "categories">("items");
   const [departmentsList, setDepartmentsList] = useState<Department[]>(departments);
 
   // Department Form states
@@ -112,6 +114,16 @@ export default function ItemMasterList({ initialItems, categories, departments }
   const [deptFormMode, setDeptFormMode] = useState<"create" | "edit">("create");
   const [deptFormError, setDeptFormError] = useState<string | null>(null);
   const [deptFormLoading, setDeptFormLoading] = useState(false);
+
+  // Category Form states
+  const [catFormData, setCatFormData] = useState({
+    id: "",
+    code: "",
+    name: "",
+  });
+  const [catFormMode, setCatFormMode] = useState<"create" | "edit">("create");
+  const [catFormError, setCatFormError] = useState<string | null>(null);
+  const [catFormLoading, setCatFormLoading] = useState(false);
 
   // Drawer/Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -243,6 +255,75 @@ export default function ItemMasterList({ initialItems, categories, departments }
       setDeptFormError(err.message || "An error occurred");
     } finally {
       setDeptFormLoading(false);
+    }
+  };
+
+  const handleSaveCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCatFormLoading(true);
+    setCatFormError(null);
+
+    const payload = {
+      code: catFormData.code.trim().toUpperCase(),
+      name: catFormData.name.trim(),
+    };
+
+    try {
+      if (catFormMode === "create") {
+        const res = await quickCreateCategory(payload);
+        if (res.success && res.category) {
+          setLocalCategories(prev => [...prev, res.category as any]);
+          setCatFormData({ id: "", code: "", name: "" });
+        } else {
+          setCatFormError(res.error || "Failed to create category");
+        }
+      } else {
+        const res = await updateCategory(catFormData.id, payload);
+        if (res.success) {
+          setLocalCategories(prev => prev.map(c => c.id === catFormData.id ? { ...c, ...payload } : c));
+          setCatFormData({ id: "", code: "", name: "" });
+          setCatFormMode("create");
+        } else {
+          setCatFormError(res.error || "Failed to update category");
+        }
+      }
+    } catch (err: any) {
+      setCatFormError(err.message || "An error occurred");
+    } finally {
+      setCatFormLoading(false);
+    }
+  };
+
+  const handleEditCategory = (cat: Category) => {
+    setCatFormData({
+      id: cat.id,
+      code: cat.code,
+      name: cat.name,
+    });
+    setCatFormMode("edit");
+    setCatFormError(null);
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this category?")) return;
+    setCatFormLoading(true);
+    setCatFormError(null);
+
+    try {
+      const res = await deleteCategory(id);
+      if (res.success) {
+        setLocalCategories(prev => prev.filter(c => c.id !== id));
+        if (catFormData.id === id) {
+          setCatFormData({ id: "", code: "", name: "" });
+          setCatFormMode("create");
+        }
+      } else {
+        setCatFormError(res.error || "Failed to delete category");
+      }
+    } catch (err: any) {
+      setCatFormError(err.message || "An error occurred");
+    } finally {
+      setCatFormLoading(false);
     }
   };
 
@@ -901,6 +982,16 @@ export default function ItemMasterList({ initialItems, categories, departments }
         >
           Departments & Subdepartments
         </button>
+        <button
+          onClick={() => setActiveTab("categories")}
+          className={`pb-2.5 text-xs font-bold uppercase tracking-wider cursor-pointer border-b-2 transition-all duration-250 ${
+            activeTab === "categories" 
+              ? "border-saffron text-onyx" 
+              : "border-transparent text-onyx/40 hover:text-onyx"
+          }`}
+        >
+          Categories
+        </button>
       </div>
 
       {activeTab === "items" && (
@@ -1517,6 +1608,131 @@ export default function ItemMasterList({ initialItems, categories, departments }
                     disabled={deptFormLoading}
                   >
                     {deptFormLoading ? "Saving..." : deptFormMode === "create" ? "Add Department" : "Save Changes"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB CONTENT: CATEGORIES */}
+      {activeTab === "categories" && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in duration-200">
+          {/* Categories List Column */}
+          <div className="md:col-span-2 space-y-4">
+            <div className="glass-card p-5 rounded-xl border border-onyx/5 shadow-sm space-y-4">
+              <div className="flex items-center justify-between border-b border-onyx/5 pb-2.5">
+                <h3 className="text-xs font-bold text-onyx/65 uppercase tracking-wider">Item Categories</h3>
+                <span className="text-[10px] bg-saffron/10 text-saffron-dark font-bold px-2 py-0.5 rounded-full border border-saffron/20">
+                  {localCategories.length} Total
+                </span>
+              </div>
+
+              {localCategories.length === 0 ? (
+                <div className="text-center py-12 text-onyx/40 text-xs">
+                  No categories created yet. Use the form on the right to add one.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[60vh] overflow-y-auto pr-1">
+                  {localCategories.map(cat => (
+                    <div key={cat.id} className="flex items-center justify-between p-3.5 bg-cream/40 border border-onyx/5 rounded-xl hover:bg-cream/60 transition-colors">
+                      <div>
+                        <span className="font-mono font-bold text-xs text-saffron-dark bg-saffron/5 border border-saffron/10 px-2 py-0.5 rounded-md mr-2">{cat.code}</span>
+                        <span className="font-bold text-xs text-onyx">{cat.name}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <button
+                          onClick={() => handleEditCategory(cat)}
+                          className="p-1 text-onyx/50 hover:text-saffron-dark hover:bg-cream-dark/50 rounded-lg transition-colors cursor-pointer"
+                          title="Edit Category"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteCategory(cat.id)}
+                          className="p-1 text-onyx/50 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                          title="Delete Category"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Category Form Column */}
+          <div className="space-y-4">
+            <div className="glass-card p-5 rounded-xl border border-onyx/5 shadow-sm space-y-4">
+              <div className="border-b border-onyx/5 pb-2.5">
+                <h3 className="text-xs font-bold text-onyx/65 uppercase tracking-wider">
+                  {catFormMode === "create" ? "Add Item Category" : "Edit Item Category"}
+                </h3>
+              </div>
+
+              {catFormError && (
+                <div className="p-3 bg-red-50 border-l-4 border-red-500 rounded-r-lg text-xs text-red-800 font-semibold flex items-center space-x-2 animate-in fade-in duration-200">
+                  <ShieldAlert size={14} className="text-red-500 shrink-0" />
+                  <span>{catFormError}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleSaveCategory} className="space-y-4">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">
+                    Category Code *
+                  </label>
+                  <input
+                    type="text"
+                    value={catFormData.code}
+                    onChange={(e) => setCatFormData(prev => ({ ...prev, code: e.target.value }))}
+                    placeholder="e.g. BAGS, BOXES, INKS"
+                    className="w-full text-xs p-2.5 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron font-mono uppercase font-bold"
+                    required
+                    disabled={catFormLoading}
+                  />
+                  <p className="text-[10px] text-onyx/40 mt-1">Unique short identifier, e.g. for item codes.</p>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-wider text-onyx/70 mb-1">
+                    Category Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={catFormData.name}
+                    onChange={(e) => setCatFormData(prev => ({ ...prev, name: e.target.value }))}
+                    placeholder="e.g. Laminated Valve Bags"
+                    className="w-full text-xs p-2.5 bg-cream-dark/30 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                    required
+                    disabled={catFormLoading}
+                  />
+                </div>
+
+                <div className="flex space-x-2 pt-2 border-t border-onyx/5">
+                  {catFormMode === "edit" && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCatFormData({ id: "", code: "", name: "" });
+                        setCatFormMode("create");
+                        setCatFormError(null);
+                      }}
+                      className="flex-1 py-2 border border-onyx/10 hover:bg-cream-dark text-xs font-bold rounded-lg transition-colors cursor-pointer"
+                      disabled={catFormLoading}
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="flex-1 py-2 bg-saffron hover:bg-saffron-dark text-xs font-bold text-onyx rounded-lg shadow-sm transition-all duration-150 cursor-pointer disabled:opacity-50"
+                    disabled={catFormLoading}
+                  >
+                    {catFormLoading ? "Saving..." : catFormMode === "create" ? "Add Category" : "Save Changes"}
                   </button>
                 </div>
               </form>

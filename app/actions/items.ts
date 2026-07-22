@@ -1011,4 +1011,65 @@ export async function quickCreateCategory(data: { name: string; code?: string })
   }
 }
 
+export async function updateCategory(id: string, data: { name: string; code: string }) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  const companyId = (session.user as any).companyId;
+
+  try {
+    const name = data.name.trim();
+    if (!name || name.length < 2) {
+      return { success: false, error: "Category name must be at least 2 characters" };
+    }
+
+    const code = data.code.trim().toUpperCase();
+    if (!code) {
+      return { success: false, error: "Category code is required" };
+    }
+
+    // Check if code exists on another category
+    const exists = await db.itemCategory.findFirst({
+      where: { companyId, code, id: { not: id } }
+    });
+    if (exists) {
+      return { success: false, error: `Category code '${code}' already exists` };
+    }
+
+    await db.itemCategory.update({
+      where: { id },
+      data: { name, code }
+    });
+
+    revalidatePath("/stores/items");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to update category" };
+  }
+}
+
+export async function deleteCategory(id: string) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  const companyId = (session.user as any).companyId;
+
+  try {
+    // Check if any items are using this category
+    const itemsUsingCategory = await db.item.count({
+      where: { companyId, categoryId: id, deletedAt: null }
+    });
+    if (itemsUsingCategory > 0) {
+      return { success: false, error: "Cannot delete category as it is currently assigned to items." };
+    }
+
+    await db.itemCategory.delete({
+      where: { id }
+    });
+
+    revalidatePath("/stores/items");
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err.message || "Failed to delete category" };
+  }
+}
+
 
