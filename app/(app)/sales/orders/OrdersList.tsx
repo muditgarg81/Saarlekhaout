@@ -14,6 +14,7 @@ import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
 import { quickCreateItem } from "@/app/actions/items";
+import { quickCreateCustomer } from "@/app/actions/customers";
 
 interface Order {
   id: string;
@@ -58,6 +59,7 @@ export default function OrdersList({
   const router = useRouter();
   const [orders] = useState<Order[]>(initialOrders);
   const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
+  const [localCustomers, setLocalCustomers] = useState<CustomerOpt[]>(customers);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -88,6 +90,26 @@ export default function OrdersList({
       return newItem;
     } else {
       alert(res.error || "Failed to create item");
+      return null;
+    }
+  };
+
+  const handleQuickCreateCustomer = async (name: string) => {
+    const res = await quickCreateCustomer({ name });
+    if (res.success && res.customer) {
+      const newCust: CustomerOpt = {
+        id: res.customer.id,
+        code: res.customer.code,
+        name: res.customer.name,
+        paymentTerms: res.customer.paymentTerms,
+        stateCode: res.customer.stateCode,
+      };
+      setLocalCustomers((prev) => [...prev, newCust]);
+      setCustomerId(newCust.id);
+      router.refresh();
+      return { value: newCust.id, label: `${newCust.name} (${newCust.code})` };
+    } else {
+      alert(res.error || "Failed to create customer");
       return null;
     }
   };
@@ -234,10 +256,11 @@ export default function OrdersList({
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <SearchableSelect
-                    options={customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                    options={localCustomers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                     value={customerId}
                     onChange={(val) => setCustomerId(val)}
                     placeholder="Select Customer..."
+                    onCreateOption={handleQuickCreateCustomer}
                   />
                 </div>
                 <div>

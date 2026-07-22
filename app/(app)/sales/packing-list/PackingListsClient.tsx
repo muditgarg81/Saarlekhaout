@@ -8,6 +8,7 @@ import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
 import { quickCreateItem } from "@/app/actions/items";
+import { quickCreateCustomer } from "@/app/actions/customers";
 
 interface PackingListRow {
   id: string;
@@ -77,6 +78,7 @@ export default function PackingListsClient({
   const router = useRouter();
   const [packingLists] = useState<PackingListRow[]>(initialPackingLists);
   const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
+  const [localCustomers, setLocalCustomers] = useState<CustOpt[]>(customers);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,6 +104,24 @@ export default function PackingListsClient({
       return newItem;
     } else {
       alert(res.error || "Failed to create item");
+      return null;
+    }
+  };
+
+  const handleQuickCreateCustomer = async (name: string) => {
+    const res = await quickCreateCustomer({ name });
+    if (res.success && res.customer) {
+      const newCust: CustOpt = {
+        id: res.customer.id,
+        code: res.customer.code,
+        name: res.customer.name,
+      };
+      setLocalCustomers((prev) => [...prev, newCust]);
+      setCustomerId(newCust.id);
+      router.refresh();
+      return { value: newCust.id, label: `${newCust.name} (${newCust.code})` };
+    } else {
+      alert(res.error || "Failed to create customer");
       return null;
     }
   };
@@ -291,11 +311,12 @@ export default function PackingListsClient({
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Customer *</label>
                   <SearchableSelect
-                    options={customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                    options={localCustomers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                     value={customerId}
                     onChange={(val) => setCustomerId(val)}
                     placeholder="Search customer..."
                     disabled={!!soId}
+                    onCreateOption={handleQuickCreateCustomer}
                   />
                 </div>
               </div>

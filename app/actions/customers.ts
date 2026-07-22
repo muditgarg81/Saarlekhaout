@@ -397,3 +397,48 @@ export async function bulkCreateCustomers(
     return { success: false, error: err.message || "Failed to bulk create customers" };
   }
 }
+
+export async function quickCreateCustomer(data: { name: string }) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const name = data.name.trim();
+    if (!name || name.length < 2) {
+      return { success: false, error: "Customer name must be at least 2 characters" };
+    }
+
+    const count = await db.customer.count({ where: { companyId } });
+    const code = `CUST-${String(count + 1).padStart(5, "0")}`;
+
+    const exists = await db.customer.findFirst({ where: { companyId, code } });
+    if (exists) {
+      return { success: false, error: `Customer code '${code}' already exists` };
+    }
+
+    const result = await db.$transaction(async (tx) => {
+      const newCustomer = await tx.customer.create({
+        data: {
+          companyId,
+          code,
+          name,
+          type: CustomerType.B2B,
+          status: CustomerStatus.APPROVED,
+        },
+      });
+
+      await logAudit(tx, companyId, actorId, "CREATE", "Customer", newCustomer.id, null, newCustomer);
+      return newCustomer;
+    });
+
+    revalidatePath("/sales/customers");
+    return { success: true, customer: result };
+  } catch (err: any) {
+    console.error("Error quick creating customer:", err);
+    return { success: false, error: err.message || "Failed to quick create customer" };
+  }
+}
+

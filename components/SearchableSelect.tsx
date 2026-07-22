@@ -13,6 +13,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   disabled?: boolean;
   className?: string;
+  onCreateOption?: (name: string) => Promise<Option | null>;
 }
 
 export function SearchableSelect({
@@ -22,6 +23,7 @@ export function SearchableSelect({
   placeholder = "Select option",
   disabled = false,
   className = "",
+  onCreateOption,
 }: SearchableSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -103,9 +105,75 @@ export function SearchableSelect({
 
           {/* Options List */}
           <div className="overflow-y-auto py-1 max-h-56">
+            {onCreateOption && (
+              <div
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (searchQuery.trim().length >= 2) {
+                    const newOpt = await onCreateOption(searchQuery.trim());
+                    if (newOpt) {
+                      onChange(newOpt.value);
+                      setIsOpen(false);
+                    }
+                  } else {
+                    const name = prompt("Enter name:");
+                    if (name && name.trim().length >= 2) {
+                      const newOpt = await onCreateOption(name.trim());
+                      if (newOpt) {
+                        onChange(newOpt.value);
+                        setIsOpen(false);
+                      }
+                    }
+                  }
+                }}
+                className="px-3 py-2 text-xs cursor-pointer text-saffron-dark hover:bg-cream-dark/20 font-bold border-b border-onyx/5 flex items-center gap-1.5 transition-colors duration-100"
+              >
+                <span>+ Create new</span>
+                {searchQuery.trim().length >= 2 && (
+                  <span className="italic text-onyx/70 truncate">"{searchQuery.trim()}"</span>
+                )}
+              </div>
+            )}
+
             {filteredOptions.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-onyx/40 text-center font-medium">
-                No options found
+              <div className="px-3 py-4 text-xs text-onyx/40 text-center font-medium flex flex-col items-center">
+                <span>No options found</span>
+                {onCreateOption && (
+                  searchQuery.trim().length >= 2 ? (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const newOpt = await onCreateOption(searchQuery.trim());
+                        if (newOpt) {
+                          onChange(newOpt.value);
+                          setIsOpen(false);
+                        }
+                      }}
+                      className="mt-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold py-1.5 px-3 rounded-lg text-xs transition duration-150 shadow-sm"
+                    >
+                      + Create "{searchQuery.trim()}"
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={async (e) => {
+                        e.stopPropagation();
+                        const name = prompt("Enter name:");
+                        if (name && name.trim().length >= 2) {
+                          const newOpt = await onCreateOption(name.trim());
+                          if (newOpt) {
+                            onChange(newOpt.value);
+                            setIsOpen(false);
+                          }
+                        }
+                      }}
+                      className="mt-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold py-1.5 px-3 rounded-lg text-xs transition duration-150 shadow-sm"
+                    >
+                      + Add Option
+                    </button>
+                  )
+                )}
               </div>
             ) : (
               filteredOptions.map((opt) => (

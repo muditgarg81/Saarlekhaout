@@ -16,6 +16,7 @@ import { QuotationStatus } from "@prisma/client";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { SearchableItemSelect } from "@/components/SearchableItemSelect";
 import { quickCreateItem } from "@/app/actions/items";
+import { quickCreateCustomer } from "@/app/actions/customers";
 
 interface Quotation {
   id: string;
@@ -56,6 +57,7 @@ export default function QuotationsList({
   const router = useRouter();
   const [quotations] = useState<Quotation[]>(initialQuotations);
   const [localItems, setLocalItems] = useState<ItemOpt[]>(items);
+  const [localCustomers, setLocalCustomers] = useState<CustomerOpt[]>(customers);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,34 +108,65 @@ export default function QuotationsList({
     setLine(i, { itemId, gstRate: it?.gstRate ?? 18 });
   };
 
-  const handleCustomerPick = (custId: string) => {
-    setCustomerId(custId);
-    const cust = customers.find(c => c.id === custId);
+  const handleCustomerPick = (id: string) => {
+    setCustomerId(id);
+    const cust = localCustomers.find((c) => c.id === id);
     if (cust) {
       setPaymentTerms(cust.paymentTerms || "");
       setPlaceOfSupply(cust.stateCode || "");
-      const bAddrs = cust.billingAddresses ? (typeof cust.billingAddresses === "string" ? JSON.parse(cust.billingAddresses) : cust.billingAddresses) : [];
-      const sAddrs = cust.shippingAddresses ? (typeof cust.shippingAddresses === "string" ? JSON.parse(cust.shippingAddresses) : cust.shippingAddresses) : [];
-      setBillingAddressOptions(bAddrs);
-      setShippingAddressOptions(sAddrs);
-      if (bAddrs.length > 0) {
-        setBillingAddress(bAddrs[0].address);
-        if (bAddrs[0].stateCode) {
-          setPlaceOfSupply(bAddrs[0].stateCode);
-        }
+      
+      const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
+      const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
+      
+      setBillingAddressOptions(bAddresses);
+      setShippingAddressOptions(sAddresses);
+
+      if (bAddresses.length > 0) {
+        setBillingAddress(bAddresses[0].address);
       } else {
         setBillingAddress(cust.billingAddress || "");
       }
-      if (sAddrs.length > 0) {
-        setShippingAddress(sAddrs[0].address);
+
+      if (sAddresses.length > 0) {
+        setShippingAddress(sAddresses[0].address);
       } else {
         setShippingAddress(cust.shippingAddress || "");
       }
     } else {
+      setPaymentTerms("");
+      setPlaceOfSupply("");
       setBillingAddressOptions([]);
       setShippingAddressOptions([]);
       setBillingAddress("");
       setShippingAddress("");
+    }
+  };
+
+  const handleQuickCreateCustomer = async (name: string) => {
+    const res = await quickCreateCustomer({ name });
+    if (res.success && res.customer) {
+      const newCust: CustomerOpt = {
+        id: res.customer.id,
+        code: res.customer.code,
+        name: res.customer.name,
+        paymentTerms: res.customer.paymentTerms,
+        stateCode: res.customer.stateCode,
+        billingAddresses: [],
+        shippingAddresses: [],
+      };
+      setLocalCustomers((prev) => [...prev, newCust]);
+      setCustomerId(newCust.id);
+      setPaymentTerms("");
+      setPlaceOfSupply("");
+      setBillingAddressOptions([]);
+      setShippingAddressOptions([]);
+      setBillingAddress("");
+      setShippingAddress("");
+      router.refresh();
+      return { value: newCust.id, label: `${newCust.name} (${newCust.code})` };
+    } else {
+      alert(res.error || "Failed to create customer");
+      return null;
     }
   };
 
@@ -291,10 +324,11 @@ export default function QuotationsList({
               <div>
                 <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Customer</label>
                 <SearchableSelect
-                  options={customers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
+                  options={localCustomers.map((c) => ({ value: c.id, label: `${c.name} (${c.code})` }))}
                   value={customerId}
                   onChange={(val) => handleCustomerPick(val)}
                   placeholder="Select Customer..."
+                  onCreateOption={handleQuickCreateCustomer}
                 />
               </div>
 
@@ -397,6 +431,17 @@ export default function QuotationsList({
               </div>
 
               <div className="space-y-3">
+                {lines.length > 0 && (
+                  <div className="flex items-center gap-3 px-3 text-[10px] font-bold text-onyx/50 uppercase tracking-wider select-none mb-1">
+                    <div className="flex-1 min-w-[200px]">Item Name / Code</div>
+                    <div className="w-20 text-center">Qty</div>
+                    <div className="w-24 text-center">Basic Price (Rate)</div>
+                    <div className="w-20 text-center">Discount %</div>
+                    <div className="w-20 text-center">GST %</div>
+                    <div className="w-24 text-right pr-4">Subtotal</div>
+                    <div className="w-10"></div>
+                  </div>
+                )}
                 {lines.map((l, idx) => (
                   <div key={idx} className="flex items-center gap-3 border border-onyx/5 p-3 rounded-lg bg-cream-light/10">
                     <div className="flex-1 min-w-[200px]">
