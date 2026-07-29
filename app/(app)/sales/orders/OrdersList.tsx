@@ -770,7 +770,8 @@ export default function OrdersList({
                       const item = itemById.get(l.itemId);
                       return {
                         ...l,
-                        itemName: item ? `${item.name} (${item.code})` : "Unknown Item"
+                        itemName: item ? `${item.name} (${item.code})` : "Unknown Item",
+                        specification: l.specification || item?.specification || ""
                       };
                     });
                     await generatePDF("Sales Order", { ...reviewOrder, lines: linesWithNames }, company);

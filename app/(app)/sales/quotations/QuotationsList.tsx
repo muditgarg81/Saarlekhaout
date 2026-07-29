@@ -841,7 +841,8 @@ export default function QuotationsList({
                       const item = itemById.get(l.itemId);
                       return {
                         ...l,
-                        itemName: item ? `${item.name} (${item.code})` : "Unknown Item"
+                        itemName: item ? `${item.name} (${item.code})` : "Unknown Item",
+                        specification: l.specification || item?.specification || ""
                       };
                     });
                     await generatePDF("Quotation", { ...reviewQuotation, lines: linesWithNames }, company);

@@ -190,12 +190,17 @@ export async function generatePDF(
 
     if (docType === "Delivery Challan") {
       headers = [["#", "Item Description", "Qty Dispatched", "Batch No"]];
-      rows = (data.lines || []).map((l: any, index: number) => [
-        index + 1,
-        l.itemName || l.item?.name || "Unknown Item",
-        l.qty,
-        l.batchNo || "—"
-      ]);
+      rows = (data.lines || []).map((l: any, index: number) => {
+        const name = l.itemName || l.item?.name || "Unknown Item";
+        const spec = l.specification || l.spec || l.item?.specification || "";
+        const itemDesc = spec ? `${name}\nTech Spec: ${spec}` : name;
+        return [
+          index + 1,
+          itemDesc,
+          l.qty,
+          l.batchNo || "—"
+        ];
+      });
       columnStyles = {
         0: { cellWidth: 15 },
         1: { cellWidth: 110 },
@@ -211,9 +216,12 @@ export async function generatePDF(
         const gstRate = l.gstRate ?? 0;
         const taxable = qty * rate * (1 - discount / 100);
         const lineTotal = taxable * (1 + gstRate / 100);
+        const name = l.itemName || l.item?.name || "Unknown Item";
+        const spec = l.specification || l.spec || l.item?.specification || "";
+        const itemDesc = spec ? `${name}\nTech Spec: ${spec}` : name;
         return [
           index + 1,
-          l.itemName || l.item?.name || "Unknown Item",
+          itemDesc,
           l.hsnCode || l.item?.hsnCode || "—",
           qty,
           `Rs. ${rate.toLocaleString("en-IN")}`,
@@ -236,9 +244,12 @@ export async function generatePDF(
       headers = [["#", "Item Description", "Qty", "Basic Price", "Disc %", "GST %", "Total (INR)"]];
       rows = (data.lines || []).map((l: any, index: number) => {
         const itemSubtotal = l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100);
+        const name = l.itemName || l.item?.name || "Unknown Item";
+        const spec = l.specification || l.spec || l.item?.specification || "";
+        const itemDesc = spec ? `${name}\nTech Spec: ${spec}` : name;
         return [
           index + 1,
-          l.itemName || l.item?.name || "Unknown Item",
+          itemDesc,
           l.qty,
           `Rs. ${l.rate.toLocaleString("en-IN")}`,
           `${l.discount}%`,
