@@ -407,6 +407,36 @@ export async function generatePDF(
       });
     }
 
+    // Render Bank Details if enabled in Document Settings
+    if (company?.showBankDetails && company?.bankDetails) {
+      const bank = typeof company.bankDetails === "string" ? JSON.parse(company.bankDetails) : company.bankDetails;
+      if (bank && (bank.bankName || bank.accountNumber)) {
+        let bankY = termsY + 6;
+        if (bankY > 260) {
+          doc.addPage();
+          bankY = 20;
+        }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9);
+        doc.setTextColor(33, 33, 33);
+        doc.text("BANK PAYMENT DETAILS", 14, bankY);
+
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8);
+        doc.setTextColor(60, 60, 60);
+
+        const bName = bank.bankName || "—";
+        const accNo = bank.accountNumber || bank.accountNo || "—";
+        const ifsc = bank.ifscCode || bank.ifsc || "—";
+        const branch = bank.branchName || bank.branch || "—";
+
+        doc.text(`Bank Name: ${bName}  |  Account No: ${accNo}`, 14, bankY + 5);
+        doc.text(`IFSC Code: ${ifsc}  |  Branch Name: ${branch}`, 14, bankY + 9.5);
+
+        termsY = bankY + 10;
+      }
+    }
+
     // Draw Authorized Signatory block at the bottom right
     let sigY = Math.max(finalY + 15, termsY) + 12;
     if (sigY > 265) {

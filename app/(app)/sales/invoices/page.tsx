@@ -51,6 +51,8 @@ export default async function SalesInvoicesPage() {
         contactEmail: companyData.contactEmail,
         contactPhone: companyData.contactPhone,
         authorizedSignatory: companySettings?.authorizedSignatory || "Authorized Signatory",
+        showBankDetails: companySettings?.showBankDetails ?? false,
+        bankDetails: companySettings?.bankDetails ?? null,
       }
     : null;
 

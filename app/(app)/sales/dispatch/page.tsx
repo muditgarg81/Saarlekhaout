@@ -54,6 +54,8 @@ export default async function DispatchPage() {
         contactEmail: companyData.contactEmail,
         contactPhone: companyData.contactPhone,
         authorizedSignatory: companySettings?.authorizedSignatory || "Authorized Signatory",
+        showBankDetails: companySettings?.showBankDetails ?? false,
+        bankDetails: companySettings?.bankDetails ?? null,
       }
     : null;
 

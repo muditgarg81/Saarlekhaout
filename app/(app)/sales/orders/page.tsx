@@ -84,7 +84,9 @@ export default async function OrdersPage() {
       presetTerms={docSettings?.soTerms || ""}
       company={{
         ...company,
-        authorizedSignatory: docSettings?.authorizedSignatory || "Sales Manager"
+        authorizedSignatory: docSettings?.authorizedSignatory || "Sales Manager",
+        showBankDetails: docSettings?.showBankDetails ?? false,
+        bankDetails: docSettings?.bankDetails ?? null,
       }}
       user={user as any}
     />
