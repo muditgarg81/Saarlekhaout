@@ -708,6 +708,20 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                   <span>Invoices & E-Invoice</span>
                 </Link>
               )}
+
+              {(can(user, "sales.invoice") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(role)) && (
+                <Link
+                  href="/sales/notes"
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                    isActive("/sales/notes")
+                      ? "bg-saffron text-onyx font-semibold shadow-md"
+                      : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                  }`}
+                >
+                  <FileText size={18} />
+                  <span>Credit / Debit Notes</span>
+                </Link>
+              )}
             </div>
           </div>
         )}
