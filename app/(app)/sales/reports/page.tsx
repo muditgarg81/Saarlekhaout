@@ -1,7 +1,8 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { getFreshUser } from "@/app/actions/auth";
-import { TrendingUp, Landmark, Users, AlertTriangle } from "lucide-react";
+import { TrendingUp, Landmark, Users, AlertTriangle, FileSpreadsheet } from "lucide-react";
 
 function bucketOf(dueDate: Date | null): "current" | "b30" | "b60" | "b90" {
   if (!dueDate) return "current";
@@ -56,14 +57,22 @@ export default async function SalesReportsPage() {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-lg bg-onyx text-saffron flex items-center justify-center">
-          <TrendingUp size={20} />
+      <div className="flex items-center justify-between gap-3 mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-onyx text-saffron flex items-center justify-center">
+            <TrendingUp size={20} />
+          </div>
+          <div>
+            <h1 className="text-xl font-heading font-bold text-onyx">Sales & Receivables Reports</h1>
+            <p className="text-xs text-onyx/50">Debtor aging from invoices + Tally bridge reconciliation</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-xl font-heading font-bold text-onyx">Sales & Receivables Reports</h1>
-          <p className="text-xs text-onyx/50">Debtor aging from invoices + Tally bridge reconciliation</p>
-        </div>
+        <Link
+          href="/sales/reports/gstr1"
+          className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm"
+        >
+          <FileSpreadsheet size={16} /> GSTR-1 Export
+        </Link>
       </div>
 
       {/* KPI cards */}
