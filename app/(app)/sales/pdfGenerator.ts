@@ -452,10 +452,13 @@ export async function generatePDF(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
     doc.text("Authorized Signatory", 135, sigY + 15);
-    if (company?.authorizedSignatory) {
+    const signatoryText = docType === "Quotation" 
+      ? (company?.authorizedSignatory || "Sales Officer/ Director") 
+      : (company?.authorizedSignatory || "");
+    if (signatoryText) {
       doc.setFont("helvetica", "italic");
       doc.setFontSize(7.5);
-      doc.text(`(${company.authorizedSignatory})`, 135, sigY + 19);
+      doc.text(`(${signatoryText})`, 135, sigY + 19);
     }
   }
   

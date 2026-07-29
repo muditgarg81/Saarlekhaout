@@ -82,7 +82,7 @@ export default async function QuotationsPage() {
       presetTerms={docSettings?.quotationTerms || ""}
       company={{
         ...company,
-        authorizedSignatory: docSettings?.authorizedSignatory || "Sales Manager",
+        authorizedSignatory: docSettings?.authorizedSignatory || "Sales Officer/ Director",
         showBankDetails: docSettings?.showBankDetails ?? false,
         bankDetails: docSettings?.bankDetails ?? null,
       }}
