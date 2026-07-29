@@ -1,5 +1,6 @@
 "use server";
 
+import { cache } from "react";
 import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { Role } from "@prisma/client";
@@ -316,7 +317,7 @@ export async function resetPasswordDirectly(data: { email: string; newPassword: 
  * Fetch the fresh user session, role, scopes, and dynamic role permissions directly from the database.
  * Bypasses the NextAuth client-side cached JWT token.
  */
-export async function getFreshUser() {
+export const getFreshUser = cache(async () => {
   const session = await auth();
   if (!session || !session.user) return null;
 
@@ -360,4 +361,4 @@ export async function getFreshUser() {
     permissions,
     status: membership?.status || "ACTIVE",
   };
-}
+});
