@@ -4,8 +4,9 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { SalesNoteType, SalesInvoiceStatus } from "@prisma/client";
+import { SalesNoteType, SalesInvoiceStatus, LedgerTxnType } from "@prisma/client";
 import { getNextSequence } from "@/lib/sequences";
+import { postLedgerEntry } from "@/lib/stock";
 import { can } from "@/lib/rbac";
 
 // Sales Credit / Debit notes. A CREDIT note (SCN-) reduces what a customer owes
@@ -20,6 +21,8 @@ const noteSchema = z.object({
   refType: z.string().optional().nullable(), // SALES_RETURN | RATE_DIFF | DISCOUNT | OTHER
   amount: z.number().positive("Amount must be > 0"),
   reason: z.string().optional().nullable(),
+  itemId: z.string().optional().nullable(), // SALES_RETURN: product returned
+  returnQty: z.number().positive().optional().nullable(), // qty re-stocked on post
 });
 
 async function logAudit(
@@ -80,6 +83,8 @@ export async function createSalesNote(data: z.infer<typeof noteSchema>) {
           refType: validated.refType || null,
           amount: validated.amount,
           reason: validated.reason || null,
+          itemId: validated.itemId || null,
+          returnQty: validated.returnQty ?? null,
           createdById: actorId,
         },
       });
@@ -111,6 +116,24 @@ export async function postSalesNote(id: string) {
 
     await db.$transaction(async (tx) => {
       await tx.salesNote.update({ where: { id }, data: { posted: true } });
+
+      // A sales-return credit note puts the returned goods back into stock.
+      if (note.type === SalesNoteType.CREDIT && note.refType === "SALES_RETURN" && note.itemId && (note.returnQty || 0) > 0) {
+        const company = await tx.company.findUnique({ where: { id: companyId } });
+        const storeId = company?.defaultStoreId;
+        if (storeId) {
+          await postLedgerEntry(tx, {
+            companyId,
+            itemId: note.itemId,
+            storeId,
+            txnType: LedgerTxnType.RETURN_TO_STORE,
+            qty: Math.abs(note.returnQty || 0),
+            refType: "SALES_RETURN",
+            refId: note.id,
+            createdById: actorId,
+          });
+        }
+      }
 
       // A posted CREDIT note against an invoice reduces its outstanding.
       if (note.type === SalesNoteType.CREDIT && note.invoiceId) {

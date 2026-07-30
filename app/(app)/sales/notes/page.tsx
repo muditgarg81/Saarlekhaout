@@ -8,7 +8,7 @@ export default async function SalesNotesPage() {
   if (!user) redirect("/auth/signin");
   const companyId = user.companyId;
 
-  const [notes, customers, invoices] = await Promise.all([
+  const [notes, customers, invoices, items] = await Promise.all([
     db.salesNote.findMany({ where: { companyId }, orderBy: { createdAt: "desc" }, take: 200 }),
     db.customer.findMany({
       where: { companyId, deletedAt: null, status: "APPROVED" },
@@ -19,6 +19,11 @@ export default async function SalesNotesPage() {
       where: { companyId, deletedAt: null, status: { not: "CANCELLED" } },
       select: { id: true, number: true, customerId: true, totalAmount: true, paidAmount: true },
       orderBy: { invoiceDate: "desc" },
+    }),
+    db.item.findMany({
+      where: { companyId, deletedAt: null, status: "ACTIVE" },
+      select: { id: true, code: true, name: true },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -45,5 +50,5 @@ export default async function SalesNotesPage() {
     outstanding: +(i.totalAmount - i.paidAmount).toFixed(2),
   }));
 
-  return <NotesList initialNotes={mappedNotes} customers={customers} invoices={invoiceOpts} user={user as any} />;
+  return <NotesList initialNotes={mappedNotes} customers={customers} invoices={invoiceOpts} items={items} user={user as any} />;
 }

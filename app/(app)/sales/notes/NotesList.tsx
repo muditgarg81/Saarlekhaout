@@ -21,6 +21,7 @@ interface Note {
 }
 interface CustomerOpt { id: string; code: string; name: string }
 interface InvoiceOpt { id: string; number: string; customerId: string; outstanding: number }
+interface ItemOpt { id: string; code: string; name: string }
 
 const REF_TYPES = ["SALES_RETURN", "RATE_DIFF", "DISCOUNT", "OTHER"];
 
@@ -28,11 +29,13 @@ export default function NotesList({
   initialNotes,
   customers,
   invoices,
+  items,
   user,
 }: {
   initialNotes: Note[];
   customers: CustomerOpt[];
   invoices: InvoiceOpt[];
+  items: ItemOpt[];
   user: SessionUser;
 }) {
   const router = useRouter();
@@ -44,6 +47,8 @@ export default function NotesList({
   const [refType, setRefType] = useState("SALES_RETURN");
   const [amount, setAmount] = useState<number>(0);
   const [reason, setReason] = useState("");
+  const [itemId, setItemId] = useState("");
+  const [returnQty, setReturnQty] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -59,6 +64,7 @@ export default function NotesList({
   const submit = async () => {
     setLoading(true);
     setError(null);
+    const isReturn = type === SalesNoteType.CREDIT && refType === "SALES_RETURN";
     const res = await createSalesNote({
       type,
       customerId,
@@ -66,6 +72,8 @@ export default function NotesList({
       refType,
       amount: Number(amount),
       reason: reason || null,
+      itemId: isReturn && itemId ? itemId : null,
+      returnQty: isReturn && returnQty > 0 ? Number(returnQty) : null,
     } as any);
     setLoading(false);
     if (!res.success) {
@@ -77,6 +85,8 @@ export default function NotesList({
     setInvoiceId("");
     setAmount(0);
     setReason("");
+    setItemId("");
+    setReturnQty(0);
     router.refresh();
   };
 
@@ -217,6 +227,22 @@ export default function NotesList({
                   <input type="number" className={inputCls} value={amount} onChange={(e) => setAmount(Number(e.target.value))} />
                 </div>
               </div>
+              {type === SalesNoteType.CREDIT && refType === "SALES_RETURN" && (
+                <div className="grid grid-cols-2 gap-4 rounded-lg bg-green-50/50 border border-green-100 p-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-onyx/60 mb-1">Returned product</label>
+                    <select className={inputCls} value={itemId} onChange={(e) => setItemId(e.target.value)}>
+                      <option value="">Not itemised</option>
+                      {items.map((it) => (<option key={it.id} value={it.id}>{it.name} ({it.code})</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-onyx/60 mb-1">Qty returned</label>
+                    <input type="number" className={inputCls} value={returnQty} onChange={(e) => setReturnQty(Number(e.target.value))} />
+                  </div>
+                  <p className="col-span-2 text-[11px] text-green-700/70">Posting will add this quantity back into stock.</p>
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-semibold text-onyx/60 mb-1">Note / remarks</label>
                 <input className={inputCls} value={reason} onChange={(e) => setReason(e.target.value)} placeholder="e.g. 5 units returned, damaged in transit" />

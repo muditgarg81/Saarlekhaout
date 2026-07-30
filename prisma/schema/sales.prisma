@@ -350,6 +350,8 @@ model SalesNote {
   refId       String?
   amount      Float
   reason      String?
+  itemId      String? // SALES_RETURN: product returned (re-stocked on post)
+  returnQty   Float? //  SALES_RETURN: quantity returned to stock
   posted      Boolean       @default(false) // immutable once posted
   createdById String
   createdAt   DateTime      @default(now())
