@@ -540,6 +540,18 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
               </Link>
 
               <Link
+                href="/sales/stock"
+                className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                  isActive("/sales/stock")
+                    ? "bg-saffron text-onyx font-semibold shadow-md"
+                    : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                }`}
+              >
+                <Boxes size={18} />
+                <span>Stock on Hand</span>
+              </Link>
+
+              <Link
                 href="/stores/departments"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
                   isActive("/stores/departments")
