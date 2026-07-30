@@ -8,7 +8,8 @@ import {
   cancelSalesInvoice,
   updateSalesInvoice,
 } from "@/app/actions/salesInvoices";
-import { Plus, X, Receipt, QrCode, Ban, Printer, Pencil } from "lucide-react";
+import { Plus, X, Receipt, QrCode, Ban, Printer, Pencil, Link2 } from "lucide-react";
+import { createInvoicePaymentLink } from "@/app/actions/paymentLinks";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { generatePDF } from "../pdfGenerator";
@@ -90,6 +91,14 @@ export default function SalesInvoicesList({
     const res = await fn();
     if (!res.success) alert(res.error);
     router.refresh();
+  };
+
+  const genPaymentLink = async (invId: string) => {
+    const res = await createInvoicePaymentLink(invId);
+    if (!res.success || !res.url) { alert((res as any).error || "Failed to create link"); return; }
+    const url = res.url;
+    try { await navigator.clipboard.writeText(url); } catch {}
+    alert(`Payment link (copied to clipboard):\n\n${url}`);
   };
 
   return (
@@ -174,6 +183,11 @@ export default function SalesInvoicesList({
                     {canEinvoice && inv.einvoiceStatus === "PENDING" && (
                       <button title="Generate e-invoice (IRN)" onClick={() => act(() => generateEInvoice(inv.id))} className="p-1.5 rounded hover:bg-green-50 text-green-600">
                         <QrCode size={15} />
+                      </button>
+                    )}
+                    {canInvoice && inv.status !== "CANCELLED" && (inv.totalAmount - inv.paidAmount) > 0 && (
+                      <button title="Create Razorpay payment link" onClick={() => genPaymentLink(inv.id)} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
+                        <Link2 size={15} />
                       </button>
                     )}
                     {canInvoice && inv.status !== "CANCELLED" && inv.paidAmount === 0 && (
