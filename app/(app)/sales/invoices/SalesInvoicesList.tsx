@@ -8,8 +8,9 @@ import {
   cancelSalesInvoice,
   updateSalesInvoice,
 } from "@/app/actions/salesInvoices";
-import { Plus, X, Receipt, QrCode, Ban, Printer, Pencil, Link2 } from "lucide-react";
+import { Plus, X, Receipt, QrCode, Ban, Printer, Pencil, Link2, Mail, MessageCircle } from "lucide-react";
 import { createInvoicePaymentLink } from "@/app/actions/paymentLinks";
+import { emailInvoice, getInvoiceWhatsApp } from "@/app/actions/invoiceDelivery";
 import { can, SessionUser } from "@/lib/rbac";
 import { SearchableSelect } from "@/components/SearchableSelect";
 import { generatePDF } from "../pdfGenerator";
@@ -101,6 +102,18 @@ export default function SalesInvoicesList({
     alert(`Payment link (copied to clipboard):\n\n${url}`);
   };
 
+  const sendEmail = async (invId: string) => {
+    const res = await emailInvoice(invId);
+    if (!res.success) { alert(res.error); return; }
+    alert(res.mock ? `SMTP not configured — email logged (mock) for ${res.to}` : `Invoice emailed to ${res.to}`);
+  };
+
+  const shareWhatsApp = async (invId: string) => {
+    const res = await getInvoiceWhatsApp(invId);
+    if (!res.success) { alert(res.error); return; }
+    window.open(`https://wa.me/${res.phone || ""}?text=${encodeURIComponent(res.text)}`, "_blank");
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -188,6 +201,16 @@ export default function SalesInvoicesList({
                     {canInvoice && inv.status !== "CANCELLED" && (inv.totalAmount - inv.paidAmount) > 0 && (
                       <button title="Create Razorpay payment link" onClick={() => genPaymentLink(inv.id)} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
                         <Link2 size={15} />
+                      </button>
+                    )}
+                    {inv.status !== "CANCELLED" && (
+                      <button title="Share on WhatsApp" onClick={() => shareWhatsApp(inv.id)} className="p-1.5 rounded hover:bg-green-50 text-green-600">
+                        <MessageCircle size={15} />
+                      </button>
+                    )}
+                    {canInvoice && inv.status !== "CANCELLED" && (
+                      <button title="Email invoice to customer" onClick={() => sendEmail(inv.id)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
+                        <Mail size={15} />
                       </button>
                     )}
                     {canInvoice && inv.status !== "CANCELLED" && inv.paidAmount === 0 && (

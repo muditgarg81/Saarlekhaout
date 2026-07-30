@@ -176,3 +176,74 @@ export async function sendPaymentReminderEmail(data: {
   }
 }
 
+export async function sendInvoiceEmail(data: {
+  email: string;
+  customerName: string;
+  invoiceNo: string;
+  outstanding: number;
+  totalAmount: number;
+  dueDate: Date | null;
+  companyName: string;
+  payLink?: string | null;
+}) {
+  const { email, customerName, invoiceNo, outstanding, totalAmount, dueDate, companyName, payLink } = data;
+  const amt = outstanding.toLocaleString("en-IN", { style: "currency", currency: "INR" });
+  const total = totalAmount.toLocaleString("en-IN", { style: "currency", currency: "INR" });
+  const due = dueDate ? dueDate.toLocaleDateString("en-IN") : "On receipt";
+  const subject = `Invoice ${invoiceNo} from ${companyName}`;
+  const payBtn = payLink
+    ? `<div style="text-align:center;margin:24px 0;"><a href="${payLink}" style="display:inline-block;background:#DDA15E;color:#131313;font-weight:bold;text-decoration:none;padding:12px 30px;border-radius:8px;font-size:14px;">Pay Now</a></div>`
+    : "";
+
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #FAF6F0; padding: 40px 20px;">
+      <div style="max-width: 500px; margin: 0 auto; background: #FFFFFF; border: 1px solid #13131310; border-radius: 16px; padding: 40px; text-align: left;">
+        <h2 style="font-family: Georgia, serif; font-size: 24px; font-weight: bold; color: #131313; margin-top: 0;">${companyName}</h2>
+        <p style="font-size: 14px; color: #13131380; font-family: monospace; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 24px;">Tax Invoice</p>
+        <p style="font-size: 15px; color: #131313; line-height: 1.6;">Dear <strong>${customerName}</strong>,</p>
+        <p style="font-size: 14px; color: #13131380; line-height: 1.6;">Please find the details of Invoice <strong>${invoiceNo}</strong> below.</p>
+        <table style="width:100%; font-size:14px; color:#131313; border-collapse:collapse; margin:16px 0;">
+          <tr><td style="padding:6px 0; color:#13131380;">Invoice total</td><td style="padding:6px 0; text-align:right; font-weight:bold;">${total}</td></tr>
+          <tr><td style="padding:6px 0; color:#13131380;">Amount due</td><td style="padding:6px 0; text-align:right; font-weight:bold;">${amt}</td></tr>
+          <tr><td style="padding:6px 0; color:#13131380;">Due date</td><td style="padding:6px 0; text-align:right;">${due}</td></tr>
+        </table>
+        ${payBtn}
+        <p style="font-size: 13px; color: #13131380; line-height: 1.6;">Thank you for your business.</p>
+      </div>
+      <p style="font-size: 11px; color: #13131340; margin-top: 20px; text-align: center;">Sent via Saarlekha Sales & Dispatch portal.</p>
+    </div>
+  `;
+
+  const textContent = `Dear ${customerName},
+
+Invoice ${invoiceNo} from ${companyName}.
+Invoice total: ${total}
+Amount due: ${amt}
+Due date: ${due}
+${payLink ? `\nPay online: ${payLink}\n` : ""}
+Thank you for your business.`;
+
+  if (!smtpHost || !smtpUser || !smtpPass) {
+    console.log("----------------------------------------");
+    console.log(`[MOCK EMAIL DISPATCH] Invoice ${invoiceNo} To: ${email}`);
+    console.log(`Subject: ${subject}`);
+    console.log("----------------------------------------");
+    return { success: true, mock: true };
+  }
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpPort === 465,
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+    await transporter.sendMail({ from: smtpFrom, to: email, subject, text: textContent, html: htmlContent });
+    console.log(`[EMAIL DISPATCH] Invoice ${invoiceNo} emailed to ${email}`);
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to send invoice email via SMTP:", error);
+    return { success: false, error };
+  }
+}
+
