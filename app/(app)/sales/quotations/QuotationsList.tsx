@@ -12,7 +12,7 @@ import {
   deleteQuotation,
   updateQuotation,
 } from "@/app/actions/quotations";
-import { Plus, X, Trash2, Send, Check, Ban, FileText, ShoppingCart, Eye, Download, Pencil } from "lucide-react";
+import { Plus, X, Trash2, Send, Check, Ban, FileText, ShoppingCart, Eye, Download, Pencil, Copy } from "lucide-react";
 import { generatePDF } from "../pdfGenerator";
 import { can, SessionUser } from "@/lib/rbac";
 import { QuotationStatus } from "@prisma/client";
@@ -140,6 +140,27 @@ export default function QuotationsList({
 
   const addLine = () => setLines([...lines, { itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
+
+  // Prefill the new-quotation form from one of this customer's earlier quotations.
+  const copyFromQuotation = (id: string) => {
+    if (!id) return;
+    const q = quotations.find((x) => x.id === id);
+    if (!q) return;
+    setLines(
+      (q.lines || []).map((l: any) => ({
+        itemId: l.itemId,
+        qty: l.qty,
+        rate: l.rate,
+        discount: l.discount,
+        gstRate: l.gstRate,
+        specification: l.specification || "",
+      }))
+    );
+    if (q.paymentTerms) setPaymentTerms(q.paymentTerms);
+    if (q.leadTime) setLeadTime(q.leadTime);
+    if (q.placeOfSupply) setPlaceOfSupply(q.placeOfSupply);
+    if (q.termsConditions) setTermsConditions(q.termsConditions);
+  };
   const setLine = (i: number, patch: Partial<Line>) =>
     setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
 
@@ -437,6 +458,27 @@ export default function QuotationsList({
             {error && (
               <div className="bg-red-50 text-red-800 border-l-4 border-red-500 p-4 text-xs font-semibold rounded-md mb-6">
                 {error}
+              </div>
+            )}
+
+            {customerId && !editingQuotationId && quotations.some((q) => q.customerId === customerId) && (
+              <div className="mb-4 p-3 rounded-lg bg-saffron/10 border border-saffron/20 flex items-center gap-3">
+                <Copy size={15} className="text-saffron-dark shrink-0" />
+                <label className="text-xs font-bold text-onyx/70 uppercase whitespace-nowrap">Copy from previous</label>
+                <select
+                  value=""
+                  onChange={(e) => copyFromQuotation(e.target.value)}
+                  className="flex-1 text-sm px-3 py-1.5 bg-white border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                >
+                  <option value="">Reuse an earlier quotation for this customer…</option>
+                  {quotations
+                    .filter((q) => q.customerId === customerId)
+                    .map((q) => (
+                      <option key={q.id} value={q.id}>
+                        {q.number} · {new Date(q.quotationDate).toLocaleDateString("en-IN")} · {q.lines?.length || 0} item(s)
+                      </option>
+                    ))}
+                </select>
               </div>
             )}
 
