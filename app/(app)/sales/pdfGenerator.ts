@@ -117,9 +117,11 @@ export async function generatePDF(
     ].filter(Boolean).join(", ");
 
     const maxTextWidth = 196 - startX;
-    doc.text(companyFullAddress || "Address not configured.", startX, 24.5, { maxWidth: maxTextWidth });
-    
-    const detailsY = startX === 14 ? 35 : 36;
+    const addressLines = doc.splitTextToSize(companyFullAddress || "Address not configured.", maxTextWidth);
+    doc.text(addressLines, startX, 24.5);
+
+    // Tax details sit directly below the address (dynamic — adapts to 1 or 2 address lines).
+    const detailsY = 24.5 + addressLines.length * 3.2 + 2;
     doc.text(`GSTIN: ${company?.gstin || "N/A"} | PAN: ${company?.pan || "N/A"}`, startX, detailsY);
     doc.text(`Email: ${company?.contactEmail || "N/A"} | Phone: ${company?.contactPhone || "N/A"}`, startX, detailsY + 4);
     
