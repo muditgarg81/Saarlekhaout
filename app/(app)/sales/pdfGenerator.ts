@@ -92,7 +92,9 @@ export async function generatePDF(
           imgHeight = imgWidth / aspectRatio;
         }
         
-        const textCenterY = 30; // Center of text block (y = 20 to y = 40)
+        // Vertically centre the logo on the (now compact) text block:
+        // name baseline ~20 down to the email line ~34 → visual centre ~25.
+        const textCenterY = 25;
         const logoY = textCenterY - imgHeight / 2;
         
         doc.addImage(img, "JPEG", 14, logoY, imgWidth, imgHeight);
