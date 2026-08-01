@@ -388,6 +388,13 @@ export async function generatePDF(
       finalY = finalY + 6;
     }
     
+    // For proposal documents, start Terms & Conditions on a fresh page so that
+    // T&C, Bank Details and the Signatory all sit together on one dedicated page.
+    if (docType === "Quotation" || docType === "Sales Order") {
+      doc.addPage();
+      finalY = 6;
+    }
+
     // Terms & conditions on the left
     let termsY = finalY + 6;
     if (data.termsConditions) {
