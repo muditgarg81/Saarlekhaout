@@ -14,7 +14,7 @@ export async function getNextSequence(
     | "IND" | "PR" | "RFQ" | "PO" | "GRN" | "ISS" | "MRN" | "GP" | "INSP" | "DN" | "CN" | "PAY" | "PRQ"
     // Sales & Dispatch (order-to-cash): Sales Order, Delivery Challan/Dispatch,
     // Sales Invoice, Receipt Voucher, Sales Credit/Debit Note, Quotation.
-    | "SO" | "DC" | "SI" | "RV" | "SCN" | "SDN" | "QT" | "PK"
+    | "SO" | "DC" | "SI" | "RV" | "SCN" | "SDN" | "QT" | "PK" | "PI"
 ): Promise<string> {
   return await db.$transaction(async (tx) => {
     const sequence = await tx.docSequence.upsert({
@@ -63,7 +63,7 @@ export async function getNextSequence(
 export async function restoreSequence(
   tx: any,
   companyId: string,
-  docType: "SO" | "DC" | "SI" | "RV" | "SCN" | "SDN" | "QT" | "PK",
+  docType: "SO" | "DC" | "SI" | "RV" | "SCN" | "SDN" | "QT" | "PK" | "PI",
   documentNumber: string
 ) {
   const sequence = await tx.docSequence.findUnique({

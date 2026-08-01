@@ -162,6 +162,7 @@ model Customer {
   company         Company        @relation(fields: [companyId], references: [id])
 
   salesOrders SalesOrder[]
+  proformas   ProformaInvoice[]
   quotations  CustomerQuotation[]
   paymentReminders PaymentReminder[]
   packingLists PackingList[]
@@ -573,3 +574,60 @@ model TermsTemplate {
 }
 
 
+
+enum ProformaStatus {
+  DRAFT
+  SENT
+  CONVERTED
+  CANCELLED
+
+  @@schema("sales")
+}
+
+model ProformaInvoice {
+  id              String         @id @default(cuid())
+  companyId       String
+  number          String // PI-XXXXX
+  customerId      String
+  quotationId     String? // source quotation, if any
+  soId            String? // sales order created on conversion
+  status          ProformaStatus @default(DRAFT)
+  proformaDate    DateTime       @default(now())
+  validUpto       DateTime?
+  paymentTerms    String?
+  deliveryTerms   String?
+  placeOfSupply   String?
+  billingAddress  String?
+  shippingAddress String?
+  notes           String?
+  taxableAmount   Float          @default(0)
+  cgst            Float          @default(0)
+  sgst            Float          @default(0)
+  igst            Float          @default(0)
+  otherCharges    Float          @default(0)
+  roundOff        Float          @default(0)
+  totalAmount     Float          @default(0)
+  createdById     String
+  createdAt       DateTime       @default(now())
+
+  customer Customer               @relation(fields: [customerId], references: [id])
+  lines    ProformaInvoiceLine[]
+
+  @@unique([companyId, number])
+  @@index([companyId, status])
+  @@schema("sales")
+}
+
+model ProformaInvoiceLine {
+  id            String          @id @default(cuid())
+  proformaId    String
+  itemId        String
+  qty           Float
+  rate          Float
+  discount      Float           @default(0)
+  gstRate       Float           @default(0)
+  specification String?
+  proforma      ProformaInvoice @relation(fields: [proformaId], references: [id])
+
+  @@schema("sales")
+}

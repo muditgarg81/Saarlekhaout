@@ -597,6 +597,20 @@ export default function Sidebar({ user, isOpen, onClose }: SidebarProps) {
                 <span>Customer Quotations</span>
               </Link>
 
+              {(can(user, "sales.invoice") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(role)) && (
+                <Link
+                  href="/sales/proforma"
+                  className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${
+                    isActive("/sales/proforma")
+                      ? "bg-saffron text-onyx font-semibold shadow-md"
+                      : "hover:bg-onyx-light text-cream-light/80 hover:text-cream-light"
+                  }`}
+                >
+                  <FileText size={18} />
+                  <span>Proforma Invoices</span>
+                </Link>
+              )}
+
               <Link
                 href="/sales/orders"
                 className={`flex items-center space-x-3 px-3 py-2 rounded-lg text-sm transition-all duration-200 ${

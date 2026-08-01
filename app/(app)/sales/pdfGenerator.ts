@@ -52,7 +52,7 @@ export function numberToWords(num: number): string {
 }
 
 export async function generatePDF(
-  docType: "Quotation" | "Sales Order" | "Delivery Challan" | "Sales Invoice",
+  docType: "Quotation" | "Sales Order" | "Delivery Challan" | "Sales Invoice" | "Proforma Invoice",
   data: any,
   company: any,
   selectedCopies?: string[]
@@ -140,12 +140,12 @@ export async function generatePDF(
     doc.setFont("helvetica", "normal");
     doc.setFontSize(8.5);
     doc.setTextColor(33, 33, 33);
-    doc.text(`${docType === "Delivery Challan" ? "DC" : docType === "Sales Invoice" ? "Invoice" : docType} #: ${data.number}`, 140, 26);
-    
-    const docDate = data.quotationDate || data.orderDate || data.dispatchDate || data.invoiceDate || data.createdAt;
+    doc.text(`${docType === "Delivery Challan" ? "DC" : docType === "Sales Invoice" ? "Invoice" : docType === "Proforma Invoice" ? "Proforma" : docType} #: ${data.number}`, 140, 26);
+
+    const docDate = data.quotationDate || data.orderDate || data.dispatchDate || data.invoiceDate || data.proformaDate || data.createdAt;
     doc.text(`Date: ${new Date(docDate).toLocaleDateString("en-IN")}`, 140, 31);
-    
-    if (docType === "Quotation" && data.validUpto) {
+
+    if ((docType === "Quotation" || docType === "Proforma Invoice") && data.validUpto) {
       doc.text(`Valid Upto: ${new Date(data.validUpto).toLocaleDateString("en-IN")}`, 140, 36);
     } else if (docType === "Sales Order" && data.deliveryDate) {
       doc.text(`Delivery Date: ${new Date(data.deliveryDate).toLocaleDateString("en-IN")}`, 140, 36);
