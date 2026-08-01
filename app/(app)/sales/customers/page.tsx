@@ -26,6 +26,8 @@ export default async function CustomersPage() {
     stateCode: c.stateCode,
     billingAddress: c.billingAddress,
     shippingAddress: c.shippingAddress,
+    billingAddresses: c.billingAddresses,
+    shippingAddresses: c.shippingAddresses,
     contactPerson: c.contactPerson,
     contactEmail: c.contactEmail,
     contactPhone: c.contactPhone,
