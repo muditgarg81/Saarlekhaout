@@ -177,7 +177,7 @@ export async function generatePDF(
     } else {
       doc.text(`Payment Terms: ${data.paymentTerms || "N/A"}`, 14, 62);
       doc.text(`Place of Supply: ${data.placeOfSupply || "N/A"}`, 14, 67);
-      doc.text(`Lead Time: ${data.leadTime || "N/A"}`, 14, 72);
+      doc.text(`Lead Time: ${data.leadTime || "N/A"}${data.deliveryTerms ? "   |   Delivery Terms: " + data.deliveryTerms : ""}`, 14, 72);
       doc.text(`GSTIN: ${data.customerGstin || "N/A"} | PAN: ${data.customerPan || "N/A"}`, 14, 77);
     }
     

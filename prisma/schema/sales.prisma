@@ -473,6 +473,7 @@ model CustomerQuotation {
   placeOfSupply   String?
   termsConditions String?
   leadTime        String?
+  deliveryTerms   String? // e.g. FOR Destination, Ex-Works, FOB
   otherCharges    Float            @default(0)
   version         Int              @default(1)
   approvedById    String?

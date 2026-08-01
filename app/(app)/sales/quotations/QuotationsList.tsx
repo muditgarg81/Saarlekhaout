@@ -38,6 +38,7 @@ interface Quotation {
   placeOfSupply?: string | null;
   termsConditions?: string | null;
   leadTime?: string | null;
+  deliveryTerms?: string | null;
   otherCharges?: number;
   lines?: any[];
   lineCount: number;
@@ -90,6 +91,7 @@ export default function QuotationsList({
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [termsConditions, setTermsConditions] = useState(presetTerms || "");
   const [leadTime, setLeadTime] = useState("");
+  const [deliveryTerms, setDeliveryTerms] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
@@ -158,6 +160,7 @@ export default function QuotationsList({
     );
     if (q.paymentTerms) setPaymentTerms(q.paymentTerms);
     if (q.leadTime) setLeadTime(q.leadTime);
+    if (q.deliveryTerms) setDeliveryTerms(q.deliveryTerms);
     if (q.placeOfSupply) setPlaceOfSupply(q.placeOfSupply);
     if (q.termsConditions) setTermsConditions(q.termsConditions);
   };
@@ -243,6 +246,7 @@ export default function QuotationsList({
       placeOfSupply: placeOfSupply || null,
       termsConditions: termsConditions || null,
       leadTime: leadTime || null,
+      deliveryTerms: deliveryTerms || null,
       otherCharges: 0,
       lines: lines
         .filter((l) => l.itemId)
@@ -363,6 +367,7 @@ export default function QuotationsList({
                             setPlaceOfSupply(q.placeOfSupply || "");
                             setTermsConditions(q.termsConditions || "");
                             setLeadTime(q.leadTime || "");
+                            setDeliveryTerms(q.deliveryTerms || "");
 
                             const cust = localCustomers.find((c) => c.id === q.customerId);
                             if (cust) {
@@ -533,6 +538,17 @@ export default function QuotationsList({
                   placeholder="e.g. 2-3 Weeks"
                   value={leadTime}
                   onChange={(e) => setLeadTime(e.target.value)}
+                  className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-onyx/70 uppercase mb-1">Delivery Terms</label>
+                <input
+                  type="text"
+                  placeholder="e.g. FOR Destination / Ex-Works / FOB"
+                  value={deliveryTerms}
+                  onChange={(e) => setDeliveryTerms(e.target.value)}
                   className="w-full text-sm px-3 py-2 bg-cream-light/40 border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron"
                 />
               </div>
