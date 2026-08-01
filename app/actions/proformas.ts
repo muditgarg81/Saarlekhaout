@@ -78,6 +78,14 @@ export async function createProforma(data: z.infer<typeof proformaSchema>) {
     const customer = await db.customer.findFirst({ where: { id: validated.customerId, companyId, deletedAt: null } });
     if (!customer) return { success: false, error: "Customer not found" };
 
+    // Fall back to the customer's first saved address (multi-address list, then legacy single).
+    const firstAddr = (list: any, legacy: string | null | undefined) => {
+      if (Array.isArray(list) && list.length > 0 && list[0]?.address) return String(list[0].address);
+      return legacy || null;
+    };
+    const billingAddress = validated.billingAddress || firstAddr((customer as any).billingAddresses, customer.billingAddress);
+    const shippingAddress = validated.shippingAddress || firstAddr((customer as any).shippingAddresses, customer.shippingAddress);
+
     const company = await db.company.findUnique({ where: { id: companyId } });
     const sellerState = company?.gstin?.slice(0, 2) || "";
     const placeOfSupply = validated.placeOfSupply || customer.stateCode || customer.gstin?.slice(0, 2) || "";
@@ -97,8 +105,8 @@ export async function createProforma(data: z.infer<typeof proformaSchema>) {
           paymentTerms: validated.paymentTerms || customer.paymentTerms || null,
           deliveryTerms: validated.deliveryTerms || null,
           placeOfSupply,
-          billingAddress: validated.billingAddress || customer.billingAddress || null,
-          shippingAddress: validated.shippingAddress || customer.shippingAddress || null,
+          billingAddress,
+          shippingAddress,
           notes: validated.notes || null,
           otherCharges: validated.otherCharges,
           ...totals,

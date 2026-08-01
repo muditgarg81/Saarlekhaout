@@ -15,7 +15,7 @@ interface Proforma {
   billingAddress: string | null; shippingAddress: string | null; notes: string | null; otherCharges: number;
   taxableAmount: number; cgst: number; sgst: number; igst: number; totalAmount: number; lines: Line[];
 }
-interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null; gstin: string | null; billingAddress: string | null; shippingAddress: string | null }
+interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null; gstin: string | null; billingAddress: string | null; shippingAddress: string | null; billingAddresses?: any; shippingAddresses?: any }
 interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null; specification: string | null; hsnCode: string | null }
 interface QuotationOpt { id: string; number: string; customerId: string; lines: Line[]; paymentTerms: string | null; deliveryTerms: string | null; placeOfSupply: string | null; billingAddress: string | null; shippingAddress: string | null }
 
@@ -114,13 +114,21 @@ export default function ProformaList({
     router.refresh();
   };
 
+  const firstAddr = (list: any, legacy: string | null) => {
+    if (Array.isArray(list) && list.length > 0 && list[0]?.address) return String(list[0].address);
+    return legacy || "";
+  };
+
   const print = async (p: Proforma) => {
     const linesWithNames = p.lines.map((l) => ({ ...l, itemName: itemById.get(l.itemId)?.name || "Item" }));
+    const cust = customers.find((c) => c.id === p.customerId);
+    const billingAddress = p.billingAddress || firstAddr(cust?.billingAddresses, cust?.billingAddress || null);
+    const shippingAddress = p.shippingAddress || firstAddr(cust?.shippingAddresses, cust?.shippingAddress || null);
     const companyForPdf = { ...company, showBankDetails: docSettings?.showBankDetails, bankDetails: docSettings?.bankDetails, authorizedSignatory: docSettings?.authorizedSignatory };
     await generatePDF("Proforma Invoice", {
       number: p.number, customer: p.customer, customerGstin: p.customerGstin, customerPan: p.customerPan,
       proformaDate: p.proformaDate, validUpto: p.validUpto, paymentTerms: p.paymentTerms, deliveryTerms: p.deliveryTerms,
-      placeOfSupply: p.placeOfSupply, billingAddress: p.billingAddress, shippingAddress: p.shippingAddress,
+      placeOfSupply: p.placeOfSupply, billingAddress, shippingAddress,
       termsConditions: p.notes || "", lines: linesWithNames, value: p.totalAmount,
       taxableAmount: p.taxableAmount, cgst: p.cgst, sgst: p.sgst, igst: p.igst,
     }, companyForPdf);

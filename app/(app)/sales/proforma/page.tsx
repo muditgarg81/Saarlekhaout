@@ -19,7 +19,7 @@ export default async function ProformaPage() {
     }),
     db.customer.findMany({
       where: { companyId, deletedAt: null, status: "APPROVED" },
-      select: { id: true, code: true, name: true, stateCode: true, paymentTerms: true, gstin: true, pan: true, billingAddress: true, shippingAddress: true },
+      select: { id: true, code: true, name: true, stateCode: true, paymentTerms: true, gstin: true, pan: true, billingAddress: true, shippingAddress: true, billingAddresses: true, shippingAddresses: true },
       orderBy: { name: "asc" },
     }),
     db.item.findMany({
