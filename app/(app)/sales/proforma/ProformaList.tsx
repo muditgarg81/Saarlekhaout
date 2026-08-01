@@ -78,6 +78,18 @@ export default function ProformaList({
     if (q.placeOfSupply) setPlaceOfSupply(q.placeOfSupply);
   };
 
+  const copyFromProforma = (id: string) => {
+    if (!id) return;
+    const p = proformas.find((x) => x.id === id);
+    if (!p) return;
+    setLines(p.lines.map((l) => ({ itemId: l.itemId, qty: l.qty, rate: l.rate, discount: l.discount, gstRate: l.gstRate, specification: l.specification || "" })));
+    if (p.paymentTerms) setPaymentTerms(p.paymentTerms);
+    if (p.deliveryTerms) setDeliveryTerms(p.deliveryTerms);
+    if (p.placeOfSupply) setPlaceOfSupply(p.placeOfSupply);
+    if (p.notes) setNotes(p.notes);
+    setOtherCharges(p.otherCharges || 0);
+  };
+
   const resetForm = () => {
     setCustomerId(""); setValidUpto(""); setPaymentTerms(""); setDeliveryTerms(""); setPlaceOfSupply(""); setNotes(""); setOtherCharges(0);
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
@@ -209,6 +221,17 @@ export default function ProformaList({
                   <select value="" onChange={(e) => copyFromQuotation(e.target.value)} className="flex-1 text-sm px-3 py-1.5 bg-white border border-onyx/10 rounded-lg">
                     <option value="">Prefill from a quotation…</option>
                     {quotations.filter((q) => q.customerId === customerId).map((q) => (<option key={q.id} value={q.id}>{q.number} · {q.lines.length} item(s)</option>))}
+                  </select>
+                </div>
+              )}
+
+              {customerId && proformas.some((p) => p.customerId === customerId) && (
+                <div className="p-3 rounded-lg bg-onyx/5 border border-onyx/10 flex items-center gap-3">
+                  <Copy size={15} className="text-onyx/50 shrink-0" />
+                  <label className="text-xs font-bold text-onyx/70 uppercase whitespace-nowrap">From proforma</label>
+                  <select value="" onChange={(e) => copyFromProforma(e.target.value)} className="flex-1 text-sm px-3 py-1.5 bg-white border border-onyx/10 rounded-lg">
+                    <option value="">Reuse an earlier proforma for this customer…</option>
+                    {proformas.filter((p) => p.customerId === customerId).map((p) => (<option key={p.id} value={p.id}>{p.number} · {new Date(p.proformaDate).toLocaleDateString("en-IN")} · {p.lines.length} item(s)</option>))}
                   </select>
                 </div>
               )}
