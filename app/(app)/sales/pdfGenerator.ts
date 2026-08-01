@@ -378,14 +378,47 @@ export async function generatePDF(
       doc.setFontSize(8.5);
       doc.text(numberToWords(data.value), 43, finalY, { maxWidth: 90 });
       
+      // Compute the summary breakdown from the line items.
+      let subTotal = 0, totalDiscount = 0, totalGst = 0;
+      (data.lines || []).forEach((l: any) => {
+        const gross = (l.qty || 0) * (l.rate || 0);
+        const disc = gross * ((l.discount || 0) / 100);
+        subTotal += gross;
+        totalDiscount += disc;
+        totalGst += (gross - disc) * ((l.gstRate || 0) / 100);
+      });
+      const grandTotal = subTotal - totalDiscount + totalGst;
+      const rupees = (n: number) => `Rs. ${n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
       doc.setFont("helvetica", "bold");
       doc.setFontSize(9.5);
+      doc.setTextColor(33, 33, 33);
       doc.text("SUMMARY", 140, finalY);
+
       doc.setFont("helvetica", "normal");
-      doc.setFontSize(9);
-      doc.text(`Grand Total: Rs. ${data.value.toLocaleString("en-IN", { minimumFractionDigits: 2 })}`, 140, finalY + 6);
-      
-      finalY = finalY + 6;
+      doc.setFontSize(8.5);
+      doc.setTextColor(60, 60, 60);
+      const rows: [string, string][] = [
+        ["Sub Total", rupees(subTotal)],
+        ["Total Discount", rupees(totalDiscount)],
+        ["Total GST", rupees(totalGst)],
+      ];
+      rows.forEach(([label, val], i) => {
+        const y = finalY + 6 + i * 5;
+        doc.text(label, 140, y);
+        doc.text(val, 196, y, { align: "right" });
+      });
+
+      const gtY = finalY + 6 + rows.length * 5 + 1;
+      doc.setDrawColor(200, 200, 200);
+      doc.line(140, gtY - 3.5, 196, gtY - 3.5);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9.5);
+      doc.setTextColor(33, 33, 33);
+      doc.text("Grand Total", 140, gtY);
+      doc.text(rupees(grandTotal), 196, gtY, { align: "right" });
+
+      finalY = gtY;
     }
     
     // For proposal documents, start Terms & Conditions on a fresh page so that
