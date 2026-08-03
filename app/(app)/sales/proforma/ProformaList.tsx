@@ -46,7 +46,13 @@ export default function ProformaList({
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [notes, setNotes] = useState("");
   const [otherCharges, setOtherCharges] = useState<number>(0);
+  const [billingAddress, setBillingAddress] = useState("");
+  const [shippingAddress, setShippingAddress] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+
+  const selectedCustomer = customers.find((c) => c.id === customerId);
+  const billingOptions: any[] = Array.isArray(selectedCustomer?.billingAddresses) ? selectedCustomer!.billingAddresses : [];
+  const shippingOptions: any[] = Array.isArray(selectedCustomer?.shippingAddresses) ? selectedCustomer!.shippingAddresses : [];
 
   const canManage = can(user, "sales.invoice") || ["ADMIN", "OWNER", "ACCOUNTS"].includes(user.role);
   const itemById = new Map(items.map((i) => [i.id, i]));
@@ -65,7 +71,14 @@ export default function ProformaList({
   const pickCustomer = (id: string) => {
     setCustomerId(id);
     const c = customers.find((x) => x.id === id);
-    if (c) { setPlaceOfSupply(c.stateCode || ""); if (c.paymentTerms) setPaymentTerms(c.paymentTerms); }
+    if (c) {
+      setPlaceOfSupply(c.stateCode || "");
+      if (c.paymentTerms) setPaymentTerms(c.paymentTerms);
+      const bList = Array.isArray(c.billingAddresses) ? c.billingAddresses : [];
+      const sList = Array.isArray(c.shippingAddresses) ? c.shippingAddresses : [];
+      setBillingAddress(bList[0]?.address || c.billingAddress || "");
+      setShippingAddress(sList[0]?.address || c.shippingAddress || "");
+    }
   };
 
   const copyFromQuotation = (id: string) => {
@@ -76,6 +89,8 @@ export default function ProformaList({
     if (q.paymentTerms) setPaymentTerms(q.paymentTerms);
     if (q.deliveryTerms) setDeliveryTerms(q.deliveryTerms);
     if (q.placeOfSupply) setPlaceOfSupply(q.placeOfSupply);
+    if (q.billingAddress) setBillingAddress(q.billingAddress);
+    if (q.shippingAddress) setShippingAddress(q.shippingAddress);
   };
 
   const copyFromProforma = (id: string) => {
@@ -87,11 +102,14 @@ export default function ProformaList({
     if (p.deliveryTerms) setDeliveryTerms(p.deliveryTerms);
     if (p.placeOfSupply) setPlaceOfSupply(p.placeOfSupply);
     if (p.notes) setNotes(p.notes);
+    if (p.billingAddress) setBillingAddress(p.billingAddress);
+    if (p.shippingAddress) setShippingAddress(p.shippingAddress);
     setOtherCharges(p.otherCharges || 0);
   };
 
   const resetForm = () => {
     setCustomerId(""); setValidUpto(""); setPaymentTerms(""); setDeliveryTerms(""); setPlaceOfSupply(""); setNotes(""); setOtherCharges(0);
+    setBillingAddress(""); setShippingAddress("");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   };
 
@@ -100,6 +118,7 @@ export default function ProformaList({
     const res = await createProforma({
       customerId, validUpto: validUpto || null, paymentTerms: paymentTerms || null, deliveryTerms: deliveryTerms || null,
       placeOfSupply: placeOfSupply || null, notes: notes || null, otherCharges: Number(otherCharges) || 0,
+      billingAddress: billingAddress || null, shippingAddress: shippingAddress || null,
       lines: lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, qty: Number(l.qty), rate: Number(l.rate), discount: Number(l.discount), gstRate: Number(l.gstRate), specification: l.specification || null })),
     } as any);
     setLoading(false);
@@ -252,6 +271,33 @@ export default function ProformaList({
                 <div>
                   <label className="block text-xs font-semibold text-onyx/60 mb-1">Delivery Terms</label>
                   <input className={inputCls} value={deliveryTerms} onChange={(e) => setDeliveryTerms(e.target.value)} placeholder="e.g. FOR Destination" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-onyx/60">Billing Address</label>
+                    {billingOptions.length > 1 && (
+                      <select value="" onChange={(e) => e.target.value && setBillingAddress(e.target.value)} className="text-[11px] px-1.5 py-0.5 border border-onyx/15 rounded bg-white text-onyx/60">
+                        <option value="">Pick saved…</option>
+                        {billingOptions.map((a, i) => (<option key={i} value={a.address}>{a.label || `Address ${i + 1}`}</option>))}
+                      </select>
+                    )}
+                  </div>
+                  <textarea className={inputCls} rows={2} value={billingAddress} onChange={(e) => setBillingAddress(e.target.value)} placeholder="Bill-to address" />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-onyx/60">Shipping Address</label>
+                    {shippingOptions.length > 1 && (
+                      <select value="" onChange={(e) => e.target.value && setShippingAddress(e.target.value)} className="text-[11px] px-1.5 py-0.5 border border-onyx/15 rounded bg-white text-onyx/60">
+                        <option value="">Pick saved…</option>
+                        {shippingOptions.map((a, i) => (<option key={i} value={a.address}>{a.label || `Address ${i + 1}`}</option>))}
+                      </select>
+                    )}
+                  </div>
+                  <textarea className={inputCls} rows={2} value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} placeholder="Ship-to address" />
                 </div>
               </div>
 
