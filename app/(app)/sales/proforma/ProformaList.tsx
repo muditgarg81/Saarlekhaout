@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createProforma, sendProforma, convertProformaToSalesOrder, cancelProforma } from "@/app/actions/proformas";
-import { Plus, X, Trash2, Send, ShoppingCart, Ban, Printer, Copy, FileText } from "lucide-react";
+import { Plus, X, Trash2, Send, ShoppingCart, Ban, Printer, Copy, FileText, Eye } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { generatePDF } from "../pdfGenerator";
 
@@ -36,6 +36,7 @@ export default function ProformaList({
   const router = useRouter();
   const [proformas] = useState(initialProformas);
   const [isOpen, setIsOpen] = useState(false);
+  const [viewProforma, setViewProforma] = useState<Proforma | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -185,7 +186,11 @@ export default function ProformaList({
           <tbody className="divide-y divide-onyx/5">
             {proformas.map((p) => (
               <tr key={p.id} className="hover:bg-cream-light/40">
-                <td className="px-4 py-3 font-mono text-xs text-onyx/70">{p.number}</td>
+                <td className="px-4 py-3 font-mono text-xs">
+                  <button onClick={() => setViewProforma(p)} className="font-bold text-saffron-dark hover:underline cursor-pointer">
+                    {p.number}
+                  </button>
+                </td>
                 <td className="px-4 py-3 text-onyx">{p.customer}</td>
                 <td className="px-4 py-3 text-onyx/60 text-xs">{new Date(p.proformaDate).toLocaleDateString("en-IN")}</td>
                 <td className="px-4 py-3 text-right font-medium text-onyx">{inr(p.totalAmount)}</td>
@@ -194,6 +199,7 @@ export default function ProformaList({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-end gap-1">
+                    <button title="View Details on Screen" onClick={() => setViewProforma(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Eye size={15} /></button>
                     <button title="Export PDF / Print" onClick={() => print(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Printer size={15} /></button>
                     {canManage && p.status === "DRAFT" && (
                       <button title="Mark as sent" onClick={() => act(() => sendProforma(p.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600"><Send size={15} /></button>
@@ -355,6 +361,208 @@ export default function ProformaList({
               <button onClick={submit} disabled={loading || !customerId || lines.every((l) => !l.itemId)} className="px-5 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold rounded-lg text-sm disabled:opacity-50">
                 {loading ? "Creating…" : "Create proforma"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Proforma Modal */}
+      {viewProforma && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl border border-onyx/10 p-6">
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6 pb-4 border-b border-onyx/10">
+              <div>
+                <div className="flex items-center gap-3">
+                  <h2 className="text-xl font-heading font-bold text-onyx">
+                    Proforma Invoice {viewProforma.number}
+                  </h2>
+                  <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full border ${STATUS_STYLES[viewProforma.status]}`}>
+                    {viewProforma.status}
+                  </span>
+                </div>
+                <p className="text-xs text-onyx/50 mt-1">
+                  Issued on {new Date(viewProforma.proformaDate).toLocaleDateString("en-IN", { dateStyle: "long" })}
+                </p>
+              </div>
+              <button
+                onClick={() => setViewProforma(null)}
+                className="text-onyx/40 hover:text-onyx hover:bg-cream-light p-1.5 rounded-lg transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Info Grid */}
+            <div className="grid grid-cols-3 gap-4 mb-6 text-xs bg-cream-light/30 p-4 rounded-xl border border-onyx/5">
+              <div className="col-span-2">
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Customer</span>
+                <span className="font-semibold text-onyx text-sm block">{viewProforma.customer}</span>
+                {(viewProforma.customerGstin || viewProforma.customerPan) && (
+                  <span className="text-[10px] text-onyx/60 mt-1 block">
+                    {viewProforma.customerGstin ? `GSTIN: ${viewProforma.customerGstin}` : ""}
+                    {viewProforma.customerGstin && viewProforma.customerPan ? " | " : ""}
+                    {viewProforma.customerPan ? `PAN: ${viewProforma.customerPan}` : ""}
+                  </span>
+                )}
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Valid Upto</span>
+                <span className="font-medium text-onyx">{viewProforma.validUpto ? new Date(viewProforma.validUpto).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Payment Terms</span>
+                <span className="font-medium text-onyx">{viewProforma.paymentTerms || "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Delivery Terms</span>
+                <span className="font-medium text-onyx">{viewProforma.deliveryTerms || "—"}</span>
+              </div>
+              <div>
+                <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Place of Supply</span>
+                <span className="font-medium text-onyx">{viewProforma.placeOfSupply || "—"}</span>
+              </div>
+              <div className="col-span-3 grid grid-cols-2 gap-4 pt-3 border-t border-onyx/5">
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Billing Address</span>
+                  <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{viewProforma.billingAddress || "—"}</p>
+                </div>
+                <div>
+                  <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Shipping Address</span>
+                  <p className="text-onyx/80 whitespace-pre-wrap leading-relaxed">{viewProforma.shippingAddress || "—"}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Line Items Table */}
+            <div className="mb-6">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider text-onyx/50 mb-2">Line Items</h4>
+              <div className="border border-onyx/10 rounded-xl overflow-hidden">
+                <table className="w-full text-xs">
+                  <thead className="bg-cream-light text-onyx/60 font-semibold text-[10px] uppercase tracking-wider">
+                    <tr>
+                      <th className="text-left px-3 py-2.5">Item Details</th>
+                      <th className="text-center px-3 py-2.5 w-20">Qty</th>
+                      <th className="text-right px-3 py-2.5 w-28">Basic Price</th>
+                      <th className="text-center px-3 py-2.5 w-20">Disc %</th>
+                      <th className="text-center px-3 py-2.5 w-20">GST %</th>
+                      <th className="text-right px-3 py-2.5 w-28 pr-4">Subtotal</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-onyx/5 bg-white">
+                    {viewProforma.lines?.map((l: any, idx: number) => {
+                      const item = itemById.get(l.itemId);
+                      const subtotal = l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100);
+                      return (
+                        <tr key={idx} className="hover:bg-cream-light/20">
+                          <td className="px-3 py-2.5">
+                            <span className="font-semibold text-onyx block">{item?.name || "Unknown Item"}</span>
+                            <span className="text-[10px] text-onyx/50 font-mono block mt-0.5">{item?.code || ""}</span>
+                            {l.specification && (
+                              <span className="text-[10px] text-saffron-dark bg-saffron/10 px-1.5 py-0.5 rounded font-mono inline-block mt-1">
+                                Spec: {l.specification}
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2.5 text-center font-medium text-onyx">{l.qty}</td>
+                          <td className="px-3 py-2.5 text-right font-medium text-onyx">₹{l.rate.toLocaleString("en-IN")}</td>
+                          <td className="px-3 py-2.5 text-center text-onyx/70">{l.discount}%</td>
+                          <td className="px-3 py-2.5 text-center text-onyx/70">{l.gstRate}%</td>
+                          <td className="px-3 py-2.5 text-right font-semibold text-onyx pr-4">
+                            ₹{subtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Financial Summary */}
+            <div className="flex justify-between items-start gap-6 mb-6">
+              <div className="flex-1">
+                {viewProforma.notes && (
+                  <div className="bg-cream-light/20 p-3 rounded-lg border border-onyx/5 text-xs">
+                    <span className="block text-[10px] font-bold uppercase tracking-wider text-onyx/40 mb-1">Notes / Terms</span>
+                    <p className="text-onyx/70 whitespace-pre-wrap">{viewProforma.notes}</p>
+                  </div>
+                )}
+              </div>
+              <div className="w-72 bg-cream-light/30 p-4 rounded-xl border border-onyx/10 text-xs space-y-2">
+                <div className="flex justify-between text-onyx/70">
+                  <span>Taxable Amount</span>
+                  <span>₹{viewProforma.taxableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                {viewProforma.cgst > 0 && (
+                  <div className="flex justify-between text-onyx/70">
+                    <span>CGST</span>
+                    <span>₹{viewProforma.cgst.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {viewProforma.sgst > 0 && (
+                  <div className="flex justify-between text-onyx/70">
+                    <span>SGST</span>
+                    <span>₹{viewProforma.sgst.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {viewProforma.igst > 0 && (
+                  <div className="flex justify-between text-onyx/70">
+                    <span>IGST</span>
+                    <span>₹{viewProforma.igst.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                {viewProforma.otherCharges > 0 && (
+                  <div className="flex justify-between text-onyx/70">
+                    <span>Other Charges</span>
+                    <span>₹{viewProforma.otherCharges.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm font-bold text-onyx pt-2 border-t border-onyx/10">
+                  <span>Total Amount</span>
+                  <span className="text-saffron-dark">₹{viewProforma.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions Footer */}
+            <div className="flex items-center justify-between pt-4 border-t border-onyx/10">
+              <button
+                onClick={() => print(viewProforma)}
+                className="px-4 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+              >
+                <Printer size={14} />
+                <span>Print / Download PDF</span>
+              </button>
+              <div className="flex items-center gap-2">
+                {canManage && viewProforma.status === "DRAFT" && (
+                  <button
+                    onClick={() => { setViewProforma(null); act(() => sendProforma(viewProforma.id)); }}
+                    className="px-3 py-2 bg-blue-50 text-blue-600 hover:bg-blue-100 font-semibold rounded-lg text-xs flex items-center gap-1 transition-colors"
+                  >
+                    <Send size={14} /> Mark Sent
+                  </button>
+                )}
+                {canManage && (viewProforma.status === "DRAFT" || viewProforma.status === "SENT") && (
+                  <button
+                    onClick={() => {
+                      if (confirm(`Convert ${viewProforma.number} to a confirmed Sales Order?`)) {
+                        setViewProforma(null);
+                        act(() => convertProformaToSalesOrder(viewProforma.id));
+                      }
+                    }}
+                    className="px-3 py-2 bg-green-50 text-green-700 hover:bg-green-100 font-semibold rounded-lg text-xs flex items-center gap-1 transition-colors"
+                  >
+                    <ShoppingCart size={14} /> Convert to Sales Order
+                  </button>
+                )}
+                <button
+                  onClick={() => setViewProforma(null)}
+                  className="px-4 py-2 bg-onyx/5 hover:bg-onyx/10 text-onyx font-semibold rounded-lg text-xs transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
