@@ -65,6 +65,7 @@ export default async function ProformaPage() {
     sgst: p.sgst,
     igst: p.igst,
     totalAmount: p.totalAmount,
+    advanceReceived: p.advanceReceived || 0,
     lines: p.lines.map((l) => ({ itemId: l.itemId, qty: l.qty, rate: l.rate, discount: l.discount, gstRate: l.gstRate, specification: l.specification })),
   }));
 

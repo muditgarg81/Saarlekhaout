@@ -403,6 +403,10 @@ export async function generatePDF(
         ["Total Discount", rupees(totalDiscount)],
         ["Total GST", rupees(totalGst)],
       ];
+      if (docType === "Proforma Invoice" && (data.advanceReceived || 0) > 0) {
+        rows.push(["Advance Received", rupees(data.advanceReceived)]);
+        rows.push(["Balance Payable", rupees(data.value - data.advanceReceived)]);
+      }
       rows.forEach(([label, val], i) => {
         const y = finalY + 6 + i * 5;
         doc.text(label, 140, y);

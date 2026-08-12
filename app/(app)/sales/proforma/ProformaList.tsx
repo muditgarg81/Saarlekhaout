@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createProforma, sendProforma, convertProformaToSalesOrder, cancelProforma } from "@/app/actions/proformas";
-import { Plus, X, Trash2, Send, ShoppingCart, Ban, Printer, Copy, FileText, Eye } from "lucide-react";
+import { createProforma, sendProforma, convertProformaToSalesOrder, cancelProforma, recordProformaAdvance } from "@/app/actions/proformas";
+import { Plus, X, Trash2, Send, ShoppingCart, Ban, Printer, Copy, FileText, Eye, DollarSign, CheckCircle2 } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { generatePDF } from "../pdfGenerator";
 
@@ -13,7 +13,7 @@ interface Proforma {
   status: string; soId: string | null; proformaDate: string; validUpto: string | null;
   paymentTerms: string | null; deliveryTerms: string | null; placeOfSupply: string | null;
   billingAddress: string | null; shippingAddress: string | null; notes: string | null; otherCharges: number;
-  taxableAmount: number; cgst: number; sgst: number; igst: number; totalAmount: number; lines: Line[];
+  taxableAmount: number; cgst: number; sgst: number; igst: number; totalAmount: number; advanceReceived: number; lines: Line[];
 }
 interface CustomerOpt { id: string; code: string; name: string; stateCode: string | null; paymentTerms: string | null; gstin: string | null; billingAddress: string | null; shippingAddress: string | null; billingAddresses?: any; shippingAddresses?: any }
 interface ItemOpt { id: string; code: string; name: string; baseUom: string; gstRate: number | null; specification: string | null; hsnCode: string | null }
@@ -47,6 +47,9 @@ export default function ProformaList({
   const [placeOfSupply, setPlaceOfSupply] = useState("");
   const [notes, setNotes] = useState("");
   const [otherCharges, setOtherCharges] = useState<number>(0);
+  const [advanceReceived, setAdvanceReceived] = useState<number>(0);
+  const [editingAdvanceId, setEditingAdvanceId] = useState<string | null>(null);
+  const [advanceInput, setAdvanceInput] = useState<string>("");
   const [billingAddress, setBillingAddress] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
   const [lines, setLines] = useState<Line[]>([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
@@ -106,10 +109,11 @@ export default function ProformaList({
     if (p.billingAddress) setBillingAddress(p.billingAddress);
     if (p.shippingAddress) setShippingAddress(p.shippingAddress);
     setOtherCharges(p.otherCharges || 0);
+    setAdvanceReceived(p.advanceReceived || 0);
   };
 
   const resetForm = () => {
-    setCustomerId(""); setValidUpto(""); setPaymentTerms(""); setDeliveryTerms(""); setPlaceOfSupply(""); setNotes(""); setOtherCharges(0);
+    setCustomerId(""); setValidUpto(""); setPaymentTerms(""); setDeliveryTerms(""); setPlaceOfSupply(""); setNotes(""); setOtherCharges(0); setAdvanceReceived(0);
     setBillingAddress(""); setShippingAddress("");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   };
@@ -118,13 +122,27 @@ export default function ProformaList({
     setLoading(true); setError(null);
     const res = await createProforma({
       customerId, validUpto: validUpto || null, paymentTerms: paymentTerms || null, deliveryTerms: deliveryTerms || null,
-      placeOfSupply: placeOfSupply || null, notes: notes || null, otherCharges: Number(otherCharges) || 0,
+      placeOfSupply: placeOfSupply || null, notes: notes || null, otherCharges: Number(otherCharges) || 0, advanceReceived: Number(advanceReceived) || 0,
       billingAddress: billingAddress || null, shippingAddress: shippingAddress || null,
       lines: lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, qty: Number(l.qty), rate: Number(l.rate), discount: Number(l.discount), gstRate: Number(l.gstRate), specification: l.specification || null })),
     } as any);
     setLoading(false);
     if (!res.success) { setError(res.error || "Failed to create proforma"); return; }
     setIsOpen(false); resetForm(); router.refresh();
+  };
+
+  const handleSaveAdvance = async (proformaId: string) => {
+    const amt = Number(advanceInput);
+    if (isNaN(amt) || amt < 0) { alert("Please enter a valid advance amount"); return; }
+    setLoading(true);
+    const res = await recordProformaAdvance(proformaId, amt);
+    setLoading(false);
+    if (!res.success) { alert(res.error || "Failed to update advance amount"); return; }
+    setEditingAdvanceId(null);
+    if (viewProforma && viewProforma.id === proformaId) {
+      setViewProforma({ ...viewProforma, advanceReceived: amt });
+    }
+    router.refresh();
   };
 
   const act = async (fn: () => Promise<any>) => {
@@ -345,7 +363,9 @@ export default function ProformaList({
                 <button onClick={addLine} className="text-sm text-saffron-dark font-semibold flex items-center gap-1"><Plus size={14} /> Add line</button>
                 <div className="flex items-center gap-3">
                   <label className="text-xs text-onyx/60">Other charges</label>
-                  <input type="number" className="w-28 px-2 py-1 border border-onyx/15 rounded text-xs text-right" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} />
+                  <input type="number" className="w-24 px-2 py-1 border border-onyx/15 rounded text-xs text-right" value={otherCharges} onChange={(e) => setOtherCharges(Number(e.target.value))} />
+                  <label className="text-xs text-onyx/60">Advance / Part Payment Recd. (₹)</label>
+                  <input type="number" className="w-28 px-2 py-1 border border-onyx/15 rounded text-xs text-right font-medium text-green-700 bg-green-50/50" value={advanceReceived} onChange={(e) => setAdvanceReceived(Number(e.target.value))} />
                   <div className="text-sm font-bold text-onyx">Total: {inr(total)}</div>
                 </div>
               </div>
@@ -489,7 +509,7 @@ export default function ProformaList({
                   </div>
                 )}
               </div>
-              <div className="w-72 bg-cream-light/30 p-4 rounded-xl border border-onyx/10 text-xs space-y-2">
+              <div className="w-80 bg-cream-light/30 p-4 rounded-xl border border-onyx/10 text-xs space-y-2">
                 <div className="flex justify-between text-onyx/70">
                   <span>Taxable Amount</span>
                   <span>₹{viewProforma.taxableAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
@@ -520,20 +540,80 @@ export default function ProformaList({
                 )}
                 <div className="flex justify-between text-sm font-bold text-onyx pt-2 border-t border-onyx/10">
                   <span>Total Amount</span>
-                  <span className="text-saffron-dark">₹{viewProforma.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  <span>₹{viewProforma.totalAmount.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between items-center text-xs font-semibold text-green-700 pt-1">
+                  <span>Advance / Part Payment Recd.</span>
+                  <span>₹{(viewProforma.advanceReceived || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                </div>
+                <div className="flex justify-between items-center text-sm font-extrabold text-onyx pt-2 border-t border-dashed border-onyx/20">
+                  <span>Balance Due / Payable</span>
+                  <span className="text-saffron-dark font-mono text-base">
+                    ₹{Math.max(0, viewProforma.totalAmount - (viewProforma.advanceReceived || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
                 </div>
               </div>
             </div>
 
+            {/* Quick Part Payment Input Box */}
+            {editingAdvanceId === viewProforma.id ? (
+              <div className="mb-6 p-4 bg-green-50/60 border border-green-200 rounded-xl flex items-center justify-between gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-green-900 uppercase tracking-wider mb-1">
+                    Record / Update Part Payment Amount Received (₹)
+                  </label>
+                  <p className="text-[11px] text-green-800">
+                    Enter the total advance/deposit amount received against {viewProforma.number}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    value={advanceInput}
+                    onChange={(e) => setAdvanceInput(e.target.value)}
+                    placeholder="Enter amount ₹"
+                    className="w-36 px-3 py-1.5 bg-white border border-green-300 rounded-lg text-sm font-bold text-green-900 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  />
+                  <button
+                    onClick={() => handleSaveAdvance(viewProforma.id)}
+                    disabled={loading}
+                    className="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg shadow-xs transition-colors flex items-center gap-1"
+                  >
+                    <CheckCircle2 size={14} /> Save
+                  </button>
+                  <button
+                    onClick={() => setEditingAdvanceId(null)}
+                    className="px-3 py-1.5 bg-white border border-onyx/10 text-onyx/70 hover:bg-cream-light font-semibold text-xs rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : null}
+
             {/* Modal Actions Footer */}
             <div className="flex items-center justify-between pt-4 border-t border-onyx/10">
-              <button
-                onClick={() => print(viewProforma)}
-                className="px-4 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition-colors"
-              >
-                <Printer size={14} />
-                <span>Print / Download PDF</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => print(viewProforma)}
+                  className="px-4 py-2 bg-saffron hover:bg-saffron-dark text-onyx font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition-colors"
+                >
+                  <Printer size={14} />
+                  <span>Print / Download PDF</span>
+                </button>
+                {canManage && viewProforma.status !== "CANCELLED" && editingAdvanceId !== viewProforma.id && (
+                  <button
+                    onClick={() => {
+                      setEditingAdvanceId(viewProforma.id);
+                      setAdvanceInput(String(viewProforma.advanceReceived || 0));
+                    }}
+                    className="px-3 py-2 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold border border-emerald-200 rounded-lg text-xs flex items-center gap-1.5 transition-colors"
+                  >
+                    <DollarSign size={14} />
+                    <span>+ Record Part Payment Recd.</span>
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-2">
                 {canManage && viewProforma.status === "DRAFT" && (
                   <button

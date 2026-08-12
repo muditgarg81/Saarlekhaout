@@ -33,6 +33,7 @@ const proformaSchema = z.object({
   shippingAddress: z.string().optional().nullable(),
   notes: z.string().optional().nullable(),
   otherCharges: z.number().nonnegative().default(0),
+  advanceReceived: z.number().nonnegative().default(0),
   lines: z.array(lineSchema).min(1, "Add at least one line"),
 });
 
@@ -109,6 +110,7 @@ export async function createProforma(data: z.infer<typeof proformaSchema>) {
           shippingAddress,
           notes: validated.notes || null,
           otherCharges: validated.otherCharges,
+          advanceReceived: validated.advanceReceived || 0,
           ...totals,
           createdById: actorId,
           lines: {
@@ -226,5 +228,34 @@ export async function convertProformaToSalesOrder(id: string) {
   } catch (err: any) {
     console.error("Error converting proforma:", err);
     return { success: false, error: err.message || "Failed to convert proforma" };
+  }
+}
+
+export async function recordProformaAdvance(id: string, advanceReceived: number) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "sales.invoice")) return { success: false, error: "Forbidden" };
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const pi = await db.proformaInvoice.findFirst({ where: { id, companyId } });
+    if (!pi) return { success: false, error: "Proforma not found" };
+
+    const val = Number(advanceReceived) || 0;
+    const result = await db.$transaction(async (tx) => {
+      const updated = await tx.proformaInvoice.update({
+        where: { id },
+        data: { advanceReceived: val },
+      });
+      await logAudit(tx, companyId, actorId, "UPDATE_ADVANCE", "ProformaInvoice", id, { advanceReceived: pi.advanceReceived }, { advanceReceived: val });
+      return updated;
+    });
+
+    revalidatePath("/sales/proforma");
+    return { success: true, proforma: result };
+  } catch (err: any) {
+    console.error("Error updating advance received:", err);
+    return { success: false, error: err.message || "Failed to record advance amount" };
   }
 }
