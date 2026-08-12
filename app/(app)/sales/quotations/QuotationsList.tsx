@@ -328,6 +328,7 @@ export default function QuotationsList({
             <tr>
               <th className="text-left px-4 py-3 font-semibold">QT #</th>
               <th className="text-left px-4 py-3 font-semibold">Customer</th>
+              <th className="text-left px-4 py-3 font-semibold">Date</th>
               <th className="text-left px-4 py-3 font-semibold">Valid Upto</th>
               <th className="text-right px-4 py-3 font-semibold">Value</th>
               <th className="text-left px-4 py-3 font-semibold">Status</th>
@@ -339,6 +340,7 @@ export default function QuotationsList({
               <tr key={q.id} className="hover:bg-cream-light/40 cursor-pointer">
                 <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 font-mono text-xs text-onyx/70">{q.number}</td>
                 <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx">{q.customer}</td>
+                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx/60 text-xs">{new Date(q.quotationDate).toLocaleDateString("en-IN")}</td>
                 <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx/60 text-xs">{q.validUpto ? new Date(q.validUpto).toLocaleDateString("en-IN") : "—"}</td>
                 <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-right font-medium text-onyx">
                   ₹{q.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
@@ -441,7 +443,7 @@ export default function QuotationsList({
             ))}
             {quotations.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-onyx/40 text-sm">No quotations generated yet.</td>
+                <td colSpan={7} className="px-4 py-12 text-center text-onyx/40 text-sm">No quotations generated yet.</td>
               </tr>
             )}
           </tbody>
