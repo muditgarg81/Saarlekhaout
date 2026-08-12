@@ -167,7 +167,7 @@ export default function ProformaList({
       number: p.number, customer: p.customer, customerGstin: p.customerGstin, customerPan: p.customerPan,
       proformaDate: p.proformaDate, validUpto: p.validUpto, paymentTerms: p.paymentTerms, deliveryTerms: p.deliveryTerms,
       placeOfSupply: p.placeOfSupply, billingAddress, shippingAddress,
-      termsConditions: p.notes || "", lines: linesWithNames, value: p.totalAmount,
+      termsConditions: p.notes || "", lines: linesWithNames, value: p.totalAmount, advanceReceived: p.advanceReceived || 0,
       taxableAmount: p.taxableAmount, cgst: p.cgst, sgst: p.sgst, igst: p.igst,
     }, companyForPdf);
   };

@@ -403,17 +403,13 @@ export async function generatePDF(
         ["Total Discount", rupees(totalDiscount)],
         ["Total GST", rupees(totalGst)],
       ];
-      if (docType === "Proforma Invoice" && (data.advanceReceived || 0) > 0) {
-        rows.push(["Advance Received", rupees(data.advanceReceived)]);
-        rows.push(["Balance Payable", rupees(data.value - data.advanceReceived)]);
-      }
       rows.forEach(([label, val], i) => {
         const y = finalY + 6 + i * 5;
         doc.text(label, 140, y);
         doc.text(val, 196, y, { align: "right" });
       });
 
-      const gtY = finalY + 6 + rows.length * 5 + 1;
+      let gtY = finalY + 6 + rows.length * 5 + 1;
       doc.setDrawColor(200, 200, 200);
       doc.line(140, gtY - 3.5, 196, gtY - 3.5);
       doc.setFont("helvetica", "bold");
@@ -421,6 +417,27 @@ export async function generatePDF(
       doc.setTextColor(33, 33, 33);
       doc.text("Grand Total", 140, gtY);
       doc.text(rupees(grandTotal), 196, gtY, { align: "right" });
+
+      if (docType === "Proforma Invoice" && (data.advanceReceived || 0) > 0) {
+        const adv = Number(data.advanceReceived);
+        const bal = Math.max(0, grandTotal - adv);
+
+        gtY += 5;
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(8.5);
+        doc.setTextColor(60, 60, 60);
+        doc.text("Advance Received", 140, gtY);
+        doc.text(rupees(adv), 196, gtY, { align: "right" });
+
+        gtY += 5;
+        doc.setDrawColor(200, 200, 200);
+        doc.line(140, gtY - 3.5, 196, gtY - 3.5);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(9.5);
+        doc.setTextColor(180, 80, 0);
+        doc.text("Balance Payable", 140, gtY);
+        doc.text(rupees(bal), 196, gtY, { align: "right" });
+      }
 
       finalY = gtY;
     }
