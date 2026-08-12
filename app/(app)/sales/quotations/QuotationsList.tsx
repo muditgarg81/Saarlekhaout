@@ -433,8 +433,8 @@ export default function QuotationsList({
                       </button>
                     )}
                     {[QuotationStatus.DRAFT, QuotationStatus.PENDING_APPROVAL, QuotationStatus.SENT].includes(q.status as any) && canCreate && (
-                      <button title="Cancel" onClick={() => act(() => cancelQuotation(q.id, "Cancelled"))} className="p-1.5 rounded hover:bg-red-50 text-red-500">
-                        <Trash2 size={15} />
+                      <button title="Cancel Quotation" onClick={() => act(() => cancelQuotation(q.id, "Cancelled"))} className="p-1.5 rounded hover:bg-red-50 text-red-500">
+                        <Ban size={15} />
                       </button>
                     )}
                   </div>
