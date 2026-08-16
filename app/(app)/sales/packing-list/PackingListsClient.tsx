@@ -390,7 +390,7 @@ export default function PackingListsClient({
                 </div>
               </div>
 
-              <div className="border border-onyx/10 rounded-lg overflow-hidden">
+              <div className="border border-onyx/10 rounded-lg overflow-visible">
                 <table className="w-full text-xs">
                   <thead className="bg-cream-light text-onyx/60 uppercase font-semibold">
                     <tr>

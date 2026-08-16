@@ -58,11 +58,16 @@ export function SearchableItemSelect({
   });
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className={`relative w-full ${isOpen ? "z-50" : ""}`}>
       {/* Trigger Button */}
-      <div
-        onClick={() => setIsOpen(!isOpen)}
-        className="w-full text-xs p-2 bg-white border border-onyx/10 rounded-lg flex items-center justify-between cursor-pointer hover:border-onyx/20 transition-all duration-150 min-h-[34px] select-none bg-no-repeat"
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className="w-full text-xs p-2 bg-white border border-onyx/10 rounded-lg flex items-center justify-between cursor-pointer hover:border-onyx/20 transition-all duration-150 min-h-[34px] select-none text-left"
       >
         <span className={selectedItem ? "text-onyx font-medium truncate" : "text-onyx/40 truncate"}>
           {selectedItem
@@ -84,7 +89,7 @@ export function SearchableItemSelect({
           )}
           <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
-      </div>
+      </button>
 
       {/* Dropdown Container */}
       {isOpen && (

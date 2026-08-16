@@ -665,7 +665,7 @@ export default function QuotationsList({
                 {lines.map((l, idx) => (
                   <div key={idx} className="border border-onyx/5 p-3 rounded-lg bg-cream-light/10 space-y-2">
                     <div className="flex items-center gap-3">
-                      <div className="flex-1 min-w-[200px]">
+                      <div className="flex-1 min-w-[200px] relative">
                         <SearchableItemSelect
                           items={localItems.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
                           value={l.itemId}

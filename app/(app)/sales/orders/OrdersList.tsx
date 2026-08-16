@@ -558,7 +558,7 @@ export default function OrdersList({
                 />
               </div>
 
-              <div className="border border-onyx/10 rounded-lg overflow-hidden">
+              <div className="border border-onyx/10 rounded-lg overflow-visible">
                 <table className="w-full text-xs">
                   <thead className="bg-cream-light text-onyx/60 uppercase">
                     <tr>
@@ -575,7 +575,7 @@ export default function OrdersList({
                     {lines.map((l, i) => (
                       <React.Fragment key={i}>
                         <tr className="border-t border-onyx/5">
-                          <td className="px-2 py-1">
+                          <td className="px-2 py-1 relative">
                             <SearchableItemSelect
                               items={localItems.map((it) => ({ id: it.id, code: it.code, name: it.name }))}
                               value={l.itemId}

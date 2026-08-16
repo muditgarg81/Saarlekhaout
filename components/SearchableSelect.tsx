@@ -57,11 +57,16 @@ export function SearchableSelect({
   );
 
   return (
-    <div ref={containerRef} className={`relative w-full ${className}`}>
+    <div ref={containerRef} className={`relative w-full ${isOpen ? "z-50" : ""} ${className}`}>
       {/* Trigger Button */}
-      <div
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        className={`w-full text-xs p-2 bg-white border border-onyx/10 rounded-lg flex items-center justify-between transition-all duration-150 min-h-[34px] select-none ${
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (!disabled) setIsOpen(!isOpen);
+        }}
+        className={`w-full text-xs p-2 bg-white border border-onyx/10 rounded-lg flex items-center justify-between transition-all duration-150 min-h-[34px] select-none text-left ${
           disabled
             ? "bg-cream-dark/20 text-onyx/40 cursor-not-allowed"
             : "cursor-pointer hover:border-onyx/20"
@@ -72,8 +77,7 @@ export function SearchableSelect({
         </span>
         <div className="flex items-center gap-1 shrink-0 ml-2 text-onyx/40">
           {!disabled && value && (
-            <button
-              type="button"
+            <span
               onClick={(e) => {
                 e.stopPropagation();
                 onChange("");
@@ -81,11 +85,11 @@ export function SearchableSelect({
               className="hover:text-onyx/80 cursor-pointer"
             >
               <X size={12} />
-            </button>
+            </span>
           )}
           <ChevronDown size={14} className={`transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
         </div>
-      </div>
+      </button>
 
       {/* Dropdown Container */}
       {isOpen && !disabled && (

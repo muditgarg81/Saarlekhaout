@@ -359,7 +359,7 @@ export default function DispatchList({
               )}
 
               {!editingDispatchId && order && (
-                <div className="border border-onyx/10 rounded-lg overflow-hidden">
+                <div className="border border-onyx/10 rounded-lg overflow-visible">
                   <table className="w-full text-xs">
                     <thead className="bg-cream-light text-onyx/60 uppercase">
                       <tr>
