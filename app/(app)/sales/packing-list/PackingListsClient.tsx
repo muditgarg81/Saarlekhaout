@@ -396,7 +396,7 @@ export default function PackingListsClient({
                     <tr>
                       <th className="text-left px-3 py-2 w-28">Bale / Pallet</th>
                       <th className="text-left px-3 py-2">Item *</th>
-                      <th className="px-3 py-2 w-20">Qty *</th>
+                      <th className="px-3 py-2 w-24 text-center">Qty *</th>
                       <th className="px-3 py-2 w-24">Net Wt (kg)</th>
                       <th className="px-3 py-2 w-24">Tare Wt (kg)</th>
                       <th className="px-3 py-2 w-24">Gross Wt (kg)</th>
@@ -536,4 +536,4 @@ export default function PackingListsClient({
 }
 
 const cellCls =
-  "w-full px-2.5 py-1.5 border border-onyx/15 rounded-lg text-xs outline-none focus:ring-1 focus:ring-saffron/40 bg-cream-light/20 focus:bg-white transition";
+  "w-full px-2.5 py-1.5 border border-onyx/15 rounded-lg text-sm font-medium outline-none focus:ring-1 focus:ring-saffron/40 bg-white transition [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";

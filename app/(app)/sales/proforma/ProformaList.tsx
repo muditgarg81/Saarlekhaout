@@ -331,11 +331,11 @@ export default function ProformaList({
                   <thead className="bg-cream-light text-onyx/60 uppercase">
                     <tr>
                       <th className="text-left px-2 py-2">Item</th>
-                      <th className="px-2 py-2 w-14">Qty</th>
-                      <th className="px-2 py-2 w-20">Rate</th>
-                      <th className="px-2 py-2 w-14">Disc%</th>
-                      <th className="px-2 py-2 w-14">GST%</th>
-                      <th className="px-2 py-2 w-24 text-right">Total</th>
+                      <th className="px-2 py-2 w-24 text-center">Qty</th>
+                      <th className="px-2 py-2 w-28 text-center">Rate</th>
+                      <th className="px-2 py-2 w-20 text-center">Disc%</th>
+                      <th className="px-2 py-2 w-20 text-center">GST%</th>
+                      <th className="px-2 py-2 w-28 text-right">Total</th>
                       <th className="w-8"></th>
                     </tr>
                   </thead>
@@ -652,4 +652,4 @@ export default function ProformaList({
 }
 
 const inputCls = "w-full px-3 py-2 border border-onyx/15 rounded-lg text-sm focus:ring-2 focus:ring-saffron/40 outline-none";
-const cellCls = "w-full px-2 py-1 border border-onyx/15 rounded text-xs outline-none focus:ring-1 focus:ring-saffron/40";
+const cellCls = "w-full px-2.5 py-1.5 border border-onyx/15 rounded text-sm text-center font-medium outline-none focus:ring-1 focus:ring-saffron/40 bg-white [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none";

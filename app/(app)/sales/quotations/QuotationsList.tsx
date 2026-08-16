@@ -654,8 +654,8 @@ export default function QuotationsList({
                 {lines.length > 0 && (
                   <div className="flex items-center gap-3 px-3 text-[10px] font-bold text-onyx/50 uppercase tracking-wider select-none mb-1">
                     <div className="flex-1 min-w-[200px]">Item Name / Code</div>
-                    <div className="w-20 text-center">Qty</div>
-                    <div className="w-24 text-center">Basic Price (Rate)</div>
+                    <div className="w-24 text-center">Qty</div>
+                    <div className="w-28 text-center">Basic Price (Rate)</div>
                     <div className="w-20 text-center">Discount %</div>
                     <div className="w-20 text-center">GST %</div>
                     <div className="w-24 text-right pr-4">Subtotal</div>
@@ -675,23 +675,23 @@ export default function QuotationsList({
                         />
                       </div>
 
-                      <div className="w-20">
+                      <div className="w-24">
                         <input
                           type="number"
                           placeholder="Qty"
                           value={l.qty}
                           onChange={(e) => setLine(idx, { qty: Number(e.target.value) })}
-                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                          className="w-full text-sm text-center font-medium px-2.5 py-1.5 bg-white border border-onyx/15 rounded-md outline-none focus:ring-1 focus:ring-saffron/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
 
-                      <div className="w-24">
+                      <div className="w-28">
                         <input
                           type="number"
                           placeholder="Rate"
                           value={l.rate}
                           onChange={(e) => setLine(idx, { rate: Number(e.target.value) })}
-                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                          className="w-full text-sm text-center font-medium px-2.5 py-1.5 bg-white border border-onyx/15 rounded-md outline-none focus:ring-1 focus:ring-saffron/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
 
@@ -701,7 +701,7 @@ export default function QuotationsList({
                           placeholder="Disc %"
                           value={l.discount}
                           onChange={(e) => setLine(idx, { discount: Number(e.target.value) })}
-                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                          className="w-full text-sm text-center font-medium px-2.5 py-1.5 bg-white border border-onyx/15 rounded-md outline-none focus:ring-1 focus:ring-saffron/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
 
@@ -711,7 +711,7 @@ export default function QuotationsList({
                           placeholder="GST %"
                           value={l.gstRate}
                           onChange={(e) => setLine(idx, { gstRate: Number(e.target.value) })}
-                          className="w-full text-xs px-2.5 py-1.5 bg-cream-light/40 border border-onyx/10 rounded-md"
+                          className="w-full text-sm text-center font-medium px-2.5 py-1.5 bg-white border border-onyx/15 rounded-md outline-none focus:ring-1 focus:ring-saffron/40 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                         />
                       </div>
 
