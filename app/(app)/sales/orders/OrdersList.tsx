@@ -300,6 +300,7 @@ export default function OrdersList({
             <tr>
               <th className="text-left px-4 py-3 font-semibold">SO #</th>
               <th className="text-left px-4 py-3 font-semibold">Customer</th>
+              <th className="text-left px-4 py-3 font-semibold">Date</th>
               <th className="text-left px-4 py-3 font-semibold">Cust. PO</th>
               <th className="text-right px-4 py-3 font-semibold">Value</th>
               <th className="text-left px-4 py-3 font-semibold">Status</th>
@@ -311,6 +312,7 @@ export default function OrdersList({
               <tr key={o.id} className="hover:bg-cream-light/40 cursor-pointer">
                 <td onClick={() => setReviewOrder(o)} className="px-4 py-3 font-mono text-xs text-onyx/70">{o.number}</td>
                 <td onClick={() => setReviewOrder(o)} className="px-4 py-3 text-onyx">{o.customer}</td>
+                <td onClick={() => setReviewOrder(o)} className="px-4 py-3 text-onyx/60 text-xs">{o.orderDate ? new Date(o.orderDate).toLocaleDateString("en-IN") : "—"}</td>
                 <td onClick={() => setReviewOrder(o)} className="px-4 py-3 text-onyx/60 text-xs">{o.customerPoNo || "—"}</td>
                 <td onClick={() => setReviewOrder(o)} className="px-4 py-3 text-right font-medium text-onyx">
                   ₹{o.value.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
@@ -407,7 +409,7 @@ export default function OrdersList({
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-onyx/40 text-sm">No sales orders yet.</td>
+                <td colSpan={7} className="px-4 py-12 text-center text-onyx/40 text-sm">No sales orders yet.</td>
               </tr>
             )}
           </tbody>
