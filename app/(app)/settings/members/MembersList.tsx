@@ -131,6 +131,20 @@ const CAPABILITIES: CapabilityNode[] = [
   { key: "reports.view", label: "View Sales, Dispatch & Tax Reports", category: "Reports & Analytics" }
 ];
 
+export const ROLE_LABELS: Record<Role, string> = {
+  OWNER: "Owner / Director",
+  ADMIN: "Administrator",
+  PURCHASE_MANAGER: "Sales Manager",
+  PURCHASE_OFFICER: "Sales Executive",
+  STORE_MANAGER: "Dispatch Manager",
+  STORE_KEEPER: "Dispatch Officer",
+  QC_INSPECTOR: "Billing & e-Invoice Officer",
+  INDENTER: "Sales Representative",
+  APPROVER: "Sales Approver",
+  ACCOUNTS: "Accounts & Receivables",
+  VIEWER: "Viewer / Read-Only",
+};
+
 const DEFAULT_CEILINGS: Record<Role, number | null> = {
   OWNER: null,
   ADMIN: null,
@@ -410,7 +424,7 @@ export default function MembersList({
 
     try {
       await updateRolePermissions(role, updatedPermissions, rolePermissionsMap[role]?.approvalLimit);
-      setMsg({ type: "success", text: `Updated ${key} capability for ${role.replace("_", " ")} role` });
+      setMsg({ type: "success", text: `Updated ${key} capability for ${ROLE_LABELS[role] || role} role` });
     } catch (err: any) {
       // Revert on error
       setRolePermissionsMap(prev => ({
@@ -441,7 +455,7 @@ export default function MembersList({
 
     try {
       await updateRolePermissions(role, rolePermissionsMap[role]?.permissions, parsedVal);
-      setMsg({ type: "success", text: `Updated default approval ceiling for ${role.replace("_", " ")} to ${currencySymbol}${parsedVal?.toLocaleString() || "Unlimited"}` });
+      setMsg({ type: "success", text: `Updated default approval ceiling for ${ROLE_LABELS[role] || role} to ${currencySymbol}${parsedVal?.toLocaleString() || "Unlimited"}` });
     } catch (err: any) {
       // Revert on error
       setRolePermissionsMap(prev => ({
@@ -601,7 +615,7 @@ export default function MembersList({
                     </td>
                     <td className="py-4 px-4 font-semibold">
                       <span className="px-2 py-0.5 bg-onyx/5 text-onyx border border-onyx/10 rounded-md font-mono text-[10px]">
-                        {m.role.replace("_", " ")}
+                        {ROLE_LABELS[m.role] || m.role}
                       </span>
                     </td>
                     <td className="py-4 px-4">
@@ -730,7 +744,7 @@ export default function MembersList({
                   <th className="py-3.5 px-4 sticky left-0 bg-white z-10 w-[260px] border-r border-cream-dark shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Module & Capability Name</th>
                   {ROLES.map((role) => (
                     <th key={role} className="py-3.5 px-2 text-center min-w-[105px] border-r border-cream-dark/50">
-                      {role.replace("_", " ")}
+                      {ROLE_LABELS[role] || role}
                     </th>
                   ))}
                 </tr>
@@ -852,7 +866,7 @@ export default function MembersList({
                     className="w-full text-xs p-2 bg-cream border border-onyx/10 rounded-lg focus:outline-none focus:border-saffron font-bold text-onyx cursor-pointer"
                   >
                     {ROLES.filter(r => isOwner || r !== "OWNER").map((r) => (
-                      <option key={r} value={r}>{r.replace("_", " ")}</option>
+                      <option key={r} value={r}>{ROLE_LABELS[r] || r}</option>
                     ))}
                   </select>
                 </div>
