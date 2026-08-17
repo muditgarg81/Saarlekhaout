@@ -737,13 +737,13 @@ export default function MembersList({
             </div>
           </div>
 
-          <div className="glass-card rounded-xl border border-onyx/5 bg-white overflow-hidden shadow-sm overflow-x-auto">
+          <div className="glass-card rounded-xl border border-onyx/5 bg-white shadow-sm max-h-[75vh] overflow-auto relative">
             <table className="w-full text-left border-collapse min-w-[1100px]">
-              <thead>
-                <tr className="bg-cream/40 border-b border-cream-dark text-[9px] uppercase font-bold text-onyx/60 tracking-wider">
-                  <th className="py-3.5 px-4 sticky left-0 bg-white z-10 w-[260px] border-r border-cream-dark shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]">Module & Capability Name</th>
+              <thead className="sticky top-0 z-20 bg-cream-light shadow-xs">
+                <tr className="bg-cream-light border-b border-cream-dark text-[9px] uppercase font-bold text-onyx/70 tracking-wider">
+                  <th className="py-3.5 px-4 sticky left-0 top-0 bg-cream-light z-30 w-[260px] border-r border-cream-dark shadow-[2px_2px_5px_-2px_rgba(0,0,0,0.08)]">Module & Capability Name</th>
                   {ROLES.map((role) => (
-                    <th key={role} className="py-3.5 px-2 text-center min-w-[105px] border-r border-cream-dark/50">
+                    <th key={role} className="py-3.5 px-2 text-center min-w-[105px] border-r border-cream-dark/50 sticky top-0 bg-cream-light z-20">
                       {ROLE_LABELS[role] || role}
                     </th>
                   ))}
