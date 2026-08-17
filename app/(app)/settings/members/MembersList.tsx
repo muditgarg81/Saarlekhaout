@@ -101,44 +101,34 @@ const CAPABILITIES: CapabilityNode[] = [
   // Identity & Admin
   { key: "company.settings.edit", label: "Edit Company Settings", category: "Identity & Admin" },
   { key: "company.branding.edit", label: "Edit Branding & Logo", category: "Identity & Admin" },
-  { key: "user.manage", label: "Manage Memberships", category: "Identity & Admin" },
-  { key: "role.assign", label: "Assign Roles", category: "Identity & Admin" },
+  { key: "user.manage", label: "Manage Memberships & Roles", category: "Identity & Admin" },
+  { key: "role.assign", label: "Assign & Manage Roles", category: "Identity & Admin" },
   { key: "numbering.config", label: "Doc Numbering Config", category: "Identity & Admin" },
-  { key: "module.toggle", label: "Toggle Modules", category: "Identity & Admin" },
-  { key: "erp.config", label: "Configure Tally ERP", category: "Identity & Admin" },
+  { key: "module.toggle", label: "Toggle System Modules", category: "Identity & Admin" },
+  { key: "erp.config", label: "Configure Tally ERP Integration", category: "Identity & Admin" },
   // Masters
-  { key: "item.manage", label: "Manage Item Master", category: "Master Data" },
-  { key: "vendor.manage", label: "Manage Vendor Details", category: "Master Data" },
-  { key: "vendor.approve", label: "Approve Vendors & Unmask Bank Info", category: "Master Data" },
-  { key: "store.manage", label: "Manage Store Locations", category: "Master Data" },
+  { key: "item.manage", label: "Manage Product & Item Master", category: "Master Data" },
+  { key: "customer.manage", label: "Manage Customer Master & Addresses", category: "Master Data" },
+  { key: "customer.approve", label: "Approve Customers & Credit Limits", category: "Master Data" },
+  { key: "store.manage", label: "Manage Warehouses & Stores", category: "Master Data" },
   { key: "shipto.manage", label: "Manage Ship-to Locations", category: "Master Data" },
-  // Indents
-  { key: "indent.create", label: "Create Indents", category: "Indents" },
-  { key: "indent.approve", label: "Approve Indents", category: "Indents" },
-  // Store Ops
-  { key: "grn.post", label: "Create & Post GRNs", category: "Store Operations" },
-  { key: "inspection.record", label: "Record QC Inspections", category: "Store Operations" },
-  { key: "issue.create", label: "Record Outward Issues", category: "Store Operations" },
-  { key: "gatepass.create", label: "Generate Gate Passes", category: "Store Operations" },
-  { key: "stock.adjust", label: "Perform Stock Adjustments", category: "Store Operations" },
-  { key: "stocktake.approve", label: "Approve Stocktakes", category: "Store Operations" },
-  { key: "reorder.review", label: "Review Replenishment Suggestions", category: "Store Operations" },
-  { key: "reorder.approve", label: "Convert Suggestions to Indents", category: "Store Operations" },
-  // Purchase
-  { key: "pr.create", label: "Raise Purchase Requisitions", category: "Purchase Module" },
-  { key: "pr.approve", label: "Approve PRs", category: "Purchase Module" },
-  { key: "rfq.manage", label: "Create RFQs & Record Quotes", category: "Purchase Module" },
-  { key: "rfq.award", label: "Award RFQ Lines", category: "Purchase Module" },
-  { key: "po.create", label: "Create PO Drafts & Amendments", category: "Purchase Module" },
-  { key: "po.approve", label: "Approve POs", category: "Purchase Module" },
-  { key: "po.send", label: "Issue & Send POs", category: "Purchase Module" },
-  // Accounts
-  { key: "invoice.match", label: "Perform 3-Way Invoice Match", category: "Finance & Accounts" },
-  { key: "payment.record", label: "Record Supplier Payments", category: "Finance & Accounts" },
-  { key: "ledger.view", label: "View Account Ledgers", category: "Finance & Accounts" },
-  { key: "erp.writeback.approve", label: "Approve ERP Writebacks", category: "Finance & Accounts" },
+  // Sales Module
+  { key: "quotation.create", label: "Create & Edit Customer Quotations", category: "Sales Module" },
+  { key: "quotation.approve", label: "Approve & Issue Quotations", category: "Sales Module" },
+  { key: "so.create", label: "Create & Edit Sales Orders", category: "Sales Module" },
+  { key: "so.approve", label: "Approve & Confirm Sales Orders", category: "Sales Module" },
+  // Dispatch & Logistics
+  { key: "dispatch.create", label: "Create Dispatch Notes & Packing Lists", category: "Dispatch & Logistics" },
+  { key: "ewaybill.generate", label: "Generate E-Way Bills", category: "Dispatch & Logistics" },
+  { key: "stock.adjust", label: "Perform Stock Adjustments", category: "Dispatch & Logistics" },
+  // Invoicing & Receivables
+  { key: "sales.invoice", label: "Create Sales & Proforma Invoices", category: "Invoicing & Receivables" },
+  { key: "einvoice.generate", label: "Generate e-Invoices & IRN Portal Sync", category: "Invoicing & Receivables" },
+  { key: "receipt.record", label: "Record Customer Payment Receipts", category: "Invoicing & Receivables" },
+  { key: "debtor.view", label: "View Customer Statement & Receivables", category: "Invoicing & Receivables" },
+  { key: "erp.writeback.approve", label: "Approve ERP Writebacks", category: "Invoicing & Receivables" },
   // Reports
-  { key: "reports.view", label: "View Audit & Reports", category: "Reports" }
+  { key: "reports.view", label: "View Sales, Dispatch & Tax Reports", category: "Reports & Analytics" }
 ];
 
 const DEFAULT_CEILINGS: Record<Role, number | null> = {
