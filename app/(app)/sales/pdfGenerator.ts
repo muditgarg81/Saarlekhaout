@@ -251,7 +251,7 @@ export async function generatePDF(
         const name = l.itemName || l.item?.name || "Unknown Item";
         const spec = l.specification || l.spec || l.item?.specification || "";
         const itemDesc = spec ? `${name}\nTech Spec: ${spec}` : name;
-        const uom = (l.uom || l.item?.baseUom || "PCS").toUpperCase();
+        const uom = (l.uom || l.item?.baseUom || l.baseUom || "").toUpperCase();
         return [
           index + 1,
           itemDesc,

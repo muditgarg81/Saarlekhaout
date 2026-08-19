@@ -94,8 +94,7 @@ export default function QuotationsList({
   const [termsConditions, setTermsConditions] = useState(presetTerms || "");
   const [leadTime, setLeadTime] = useState("");
   const [deliveryTerms, setDeliveryTerms] = useState("");
-  const [defaultQuoteUom, setDefaultQuoteUom] = useState<string>("NOS");
-  const [lines, setLines] = useState<Line[]>([{ itemId: "", uom: "NOS", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+  const [lines, setLines] = useState<Line[]>([{ itemId: "", uom: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
@@ -920,6 +919,7 @@ export default function QuotationsList({
                       const item = itemById.get(l.itemId);
                       return {
                         ...l,
+                        uom: l.uom || item?.baseUom || "",
                         itemName: item ? `${item.name} (${item.code})` : "Unknown Item",
                         specification: l.specification || item?.specification || ""
                       };
