@@ -173,7 +173,9 @@ export default function QuotationsList({
 
   const onItemPick = (i: number, itemId: string) => {
     const it = itemById.get(itemId);
-    setLine(i, { itemId, uom: it?.baseUom || defaultQuoteUom || "NOS", gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
+    const existingUom = lines[i]?.uom;
+    const chosenUom = existingUom || defaultQuoteUom || it?.baseUom || "NOS";
+    setLine(i, { itemId, uom: chosenUom, gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
   const handleCustomerPick = (id: string) => {
@@ -717,7 +719,7 @@ export default function QuotationsList({
                               ? COMMON_UOMS.includes(l.uom.toUpperCase()) || (l.itemId && [itemById.get(l.itemId)?.baseUom, itemById.get(l.itemId)?.altUom].includes(l.uom))
                                 ? l.uom.toUpperCase()
                                 : "CUSTOM"
-                              : (l.itemId ? itemById.get(l.itemId)?.baseUom || defaultQuoteUom : defaultQuoteUom)
+                              : defaultQuoteUom
                           }
                           onChange={(e) => {
                             const val = e.target.value;

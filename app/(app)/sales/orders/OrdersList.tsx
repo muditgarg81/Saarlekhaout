@@ -168,7 +168,7 @@ export default function OrdersList({
 
   const onItemPick = (i: number, itemId: string) => {
     const it = itemById.get(itemId);
-    setLine(i, { itemId, uom: it?.baseUom || "PCS", gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
+    setLine(i, { itemId, uom: lines[i]?.uom || it?.baseUom || "PCS", gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
   const handleCustomerPick = (id: string) => {
