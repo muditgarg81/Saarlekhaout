@@ -16,6 +16,7 @@ import { notify } from "@/lib/notifications";
 
 const soLineSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
+  uom: z.string().optional().nullable(),
   qty: z.number().positive("Qty must be > 0"),
   rate: z.number().nonnegative(),
   discount: z.number().min(0).max(100).default(0),
@@ -113,6 +114,7 @@ export async function createSalesOrder(data: z.infer<typeof soSchema>) {
           lines: {
             create: validated.lines.map((l) => ({
               itemId: l.itemId,
+              uom: l.uom || null,
               qty: l.qty,
               rate: l.rate,
               discount: l.discount,
@@ -349,6 +351,7 @@ export async function updateSalesOrder(id: string, data: z.infer<typeof soSchema
           lines: {
             create: validated.lines.map((l) => ({
               itemId: l.itemId,
+              uom: l.uom || null,
               qty: l.qty,
               rate: l.rate,
               discount: l.discount,

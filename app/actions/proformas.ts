@@ -15,6 +15,7 @@ import { can } from "@/lib/rbac";
 
 const lineSchema = z.object({
   itemId: z.string().min(1, "Item is required"),
+  uom: z.string().optional().nullable(),
   qty: z.number().positive("Qty must be > 0"),
   rate: z.number().nonnegative(),
   discount: z.number().min(0).max(100).default(0),
@@ -115,7 +116,7 @@ export async function createProforma(data: z.infer<typeof proformaSchema>) {
           createdById: actorId,
           lines: {
             create: validated.lines.map((l) => ({
-              itemId: l.itemId, qty: l.qty, rate: l.rate, discount: l.discount, gstRate: l.gstRate, specification: l.specification || null,
+              itemId: l.itemId, uom: l.uom || null, qty: l.qty, rate: l.rate, discount: l.discount, gstRate: l.gstRate, specification: l.specification || null,
             })),
           },
         },

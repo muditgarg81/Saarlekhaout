@@ -215,6 +215,7 @@ model SoLine {
   id            String         @id @default(cuid())
   soId          String
   itemId        String
+  uom           String?
   qty           Float
   dispatchedQty Float          @default(0)
   invoicedQty   Float          @default(0)
@@ -495,6 +496,7 @@ model CustomerQuotationLine {
   id            String            @id @default(cuid())
   quotationId   String
   itemId        String
+  uom           String?
   qty           Float
   rate          Float
   discount      Float             @default(0) // %
@@ -623,6 +625,7 @@ model ProformaInvoiceLine {
   id            String          @id @default(cuid())
   proformaId    String
   itemId        String
+  uom           String?
   qty           Float
   rate          Float
   discount      Float           @default(0)

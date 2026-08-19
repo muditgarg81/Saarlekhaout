@@ -256,6 +256,7 @@ export default function QuotationsList({
         .filter((l) => l.itemId)
         .map((l) => ({
           itemId: l.itemId,
+          uom: l.uom || null,
           qty: Number(l.qty),
           rate: Number(l.rate),
           discount: Number(l.discount),
@@ -282,7 +283,7 @@ export default function QuotationsList({
     setTermsConditions(presetTerms || "");
     setLeadTime("");
     setEditingQuotationId(null);
-    setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+    setLines([{ itemId: "", uom: defaultQuoteUom || "NOS", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
 
@@ -316,7 +317,7 @@ export default function QuotationsList({
               setPlaceOfSupply("");
               setTermsConditions(presetTerms || "");
               setLeadTime("");
-              setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+              setLines([{ itemId: "", uom: defaultQuoteUom || "NOS", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
               setIsOpen(true);
             }}
             className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm"
@@ -388,6 +389,7 @@ export default function QuotationsList({
 
                             setLines(q.lines?.map((l: any) => ({
                               itemId: l.itemId,
+                              uom: l.uom || (itemById.get(l.itemId)?.baseUom) || "PCS",
                               qty: l.qty,
                               rate: l.rate,
                               discount: l.discount,

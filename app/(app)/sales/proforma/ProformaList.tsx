@@ -124,7 +124,7 @@ export default function ProformaList({
       customerId, validUpto: validUpto || null, paymentTerms: paymentTerms || null, deliveryTerms: deliveryTerms || null,
       placeOfSupply: placeOfSupply || null, notes: notes || null, otherCharges: Number(otherCharges) || 0, advanceReceived: Number(advanceReceived) || 0,
       billingAddress: billingAddress || null, shippingAddress: shippingAddress || null,
-      lines: lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, qty: Number(l.qty), rate: Number(l.rate), discount: Number(l.discount), gstRate: Number(l.gstRate), specification: l.specification || null })),
+      lines: lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, uom: l.uom || null, qty: Number(l.qty), rate: Number(l.rate), discount: Number(l.discount), gstRate: Number(l.gstRate), specification: l.specification || null })),
     } as any);
     setLoading(false);
     if (!res.success) { setError(res.error || "Failed to create proforma"); return; }

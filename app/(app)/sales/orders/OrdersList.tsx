@@ -224,6 +224,7 @@ export default function OrdersList({
         .filter((l) => l.itemId)
         .map((l) => ({
           itemId: l.itemId,
+          uom: l.uom || null,
           qty: Number(l.qty),
           rate: Number(l.rate),
           discount: Number(l.discount),
