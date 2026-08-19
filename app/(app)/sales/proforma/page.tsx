@@ -24,7 +24,7 @@ export default async function ProformaPage() {
     }),
     db.item.findMany({
       where: { companyId, deletedAt: null, status: "ACTIVE" },
-      select: { id: true, code: true, name: true, baseUom: true, gstRate: true, specification: true, hsnCode: true },
+      select: { id: true, code: true, name: true, baseUom: true, altUom: true, gstRate: true, specification: true, hsnCode: true },
       orderBy: { name: "asc" },
       take: 1000,
     }),
