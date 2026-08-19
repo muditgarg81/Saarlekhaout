@@ -143,7 +143,7 @@ export default function QuotationsList({
     }
   };
 
-  const addLine = () => setLines([...lines, { itemId: "", uom: defaultQuoteUom || "NOS", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+  const addLine = () => setLines([...lines, { itemId: "", uom: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
   const removeLine = (i: number) => setLines(lines.filter((_, idx) => idx !== i));
 
   // Prefill the new-quotation form from one of this customer's earlier quotations.
@@ -154,7 +154,7 @@ export default function QuotationsList({
     setLines(
       (q.lines || []).map((l: any) => ({
         itemId: l.itemId,
-        uom: l.uom || defaultQuoteUom || "NOS",
+        uom: l.uom || "",
         qty: l.qty,
         rate: l.rate,
         discount: l.discount,
@@ -173,9 +173,7 @@ export default function QuotationsList({
 
   const onItemPick = (i: number, itemId: string) => {
     const it = itemById.get(itemId);
-    const existingUom = lines[i]?.uom;
-    const chosenUom = existingUom || defaultQuoteUom || it?.baseUom || "NOS";
-    setLine(i, { itemId, uom: chosenUom, gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
+    setLine(i, { itemId, uom: lines[i]?.uom || "", gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
   const handleCustomerPick = (id: string) => {
@@ -285,7 +283,7 @@ export default function QuotationsList({
     setTermsConditions(presetTerms || "");
     setLeadTime("");
     setEditingQuotationId(null);
-    setLines([{ itemId: "", uom: defaultQuoteUom || "NOS", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+    setLines([{ itemId: "", uom: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
     router.refresh();
   };
 
@@ -319,7 +317,7 @@ export default function QuotationsList({
               setPlaceOfSupply("");
               setTermsConditions(presetTerms || "");
               setLeadTime("");
-              setLines([{ itemId: "", uom: defaultQuoteUom || "NOS", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
+              setLines([{ itemId: "", uom: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
               setIsOpen(true);
             }}
             className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm"
@@ -649,48 +647,20 @@ export default function QuotationsList({
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
                 <h4 className="text-xs font-bold text-onyx/70 uppercase tracking-wide">Line Items</h4>
-
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center gap-1.5 bg-cream-light/60 px-2.5 py-1 rounded-lg border border-onyx/10">
-                    <span className="text-[10px] font-bold text-onyx/60 uppercase">Default UOM:</span>
-                    <select
-                      value={defaultQuoteUom}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        setDefaultQuoteUom(val);
-                        setLines(lines.map((l) => ({ ...l, uom: val })));
-                      }}
-                      className="text-xs font-bold bg-white px-2 py-0.5 border border-onyx/15 rounded text-onyx outline-none cursor-pointer focus:ring-1 focus:ring-saffron"
-                    >
-                      {COMMON_UOMS.map((u) => (
-                        <option key={u} value={u}>{u}</option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setLines(lines.map((l) => ({ ...l, uom: defaultQuoteUom })))}
-                      className="text-[10px] font-bold text-saffron-dark bg-saffron/15 hover:bg-saffron/25 px-2 py-0.5 rounded transition cursor-pointer"
-                      title="Apply default UOM to all lines"
-                    >
-                      Apply All
-                    </button>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={addLine}
-                    className="text-xs font-semibold text-saffron hover:underline"
-                  >
-                    + Add Line
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={addLine}
+                  className="text-xs font-semibold text-saffron hover:underline"
+                >
+                  + Add Line
+                </button>
               </div>
 
               <div className="space-y-3">
                 {lines.length > 0 && (
                   <div className="flex items-center gap-3 px-3 text-[10px] font-bold text-onyx/50 uppercase tracking-wider select-none mb-1">
                     <div className="flex-1 min-w-[200px]">Item Name / Code</div>
-                    <div className="w-24 text-center">UOM</div>
+                    <div className="w-20 text-center">UOM</div>
                     <div className="w-24 text-center">Qty</div>
                     <div className="w-28 text-center">Basic Price (Rate)</div>
                     <div className="w-20 text-center">Discount %</div>
@@ -712,59 +682,14 @@ export default function QuotationsList({
                         />
                       </div>
 
-                      <div className="w-24">
-                        <select
-                          value={
-                            l.uom
-                              ? COMMON_UOMS.includes(l.uom.toUpperCase()) || (l.itemId && [itemById.get(l.itemId)?.baseUom, itemById.get(l.itemId)?.altUom].includes(l.uom))
-                                ? l.uom.toUpperCase()
-                                : "CUSTOM"
-                              : defaultQuoteUom
-                          }
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val !== "CUSTOM") {
-                              setLine(idx, { uom: val });
-                            } else {
-                              setLine(idx, { uom: l.uom || "" });
-                            }
-                          }}
-                          className="w-full text-xs text-center font-bold px-1.5 py-1.5 bg-white border border-onyx/15 rounded-md outline-none focus:ring-1 focus:ring-saffron/40 uppercase cursor-pointer"
-                        >
-                          {l.itemId && itemById.get(l.itemId)?.baseUom && (
-                            <option value={itemById.get(l.itemId)!.baseUom}>
-                              {itemById.get(l.itemId)!.baseUom} (Base)
-                            </option>
-                          )}
-                          {l.itemId && itemById.get(l.itemId)?.altUom && itemById.get(l.itemId)?.altUom !== itemById.get(l.itemId)?.baseUom && (
-                            <option value={itemById.get(l.itemId)!.altUom!}>
-                              {itemById.get(l.itemId)!.altUom} (Alt)
-                            </option>
-                          )}
-                          {COMMON_UOMS.filter(
-                            (u) =>
-                              !l.itemId ||
-                              (u !== itemById.get(l.itemId)?.baseUom && u !== itemById.get(l.itemId)?.altUom)
-                          ).map((u) => (
-                            <option key={u} value={u}>
-                              {u}
-                            </option>
-                          ))}
-                          <option value="CUSTOM">Custom UOM...</option>
-                        </select>
-
-                        {(!COMMON_UOMS.includes((l.uom || "").toUpperCase()) &&
-                          (!l.itemId ||
-                            (l.uom !== itemById.get(l.itemId)?.baseUom &&
-                              l.uom !== itemById.get(l.itemId)?.altUom))) && (
-                          <input
-                            type="text"
-                            placeholder="Type UOM"
-                            value={l.uom || ""}
-                            onChange={(e) => setLine(idx, { uom: e.target.value })}
-                            className="w-full text-[11px] text-center font-bold px-1.5 py-1 bg-cream-light/60 border border-onyx/15 rounded mt-1 uppercase"
-                          />
-                        )}
+                      <div className="w-20">
+                        <input
+                          type="text"
+                          placeholder="UOM"
+                          value={l.uom || ""}
+                          onChange={(e) => setLine(idx, { uom: e.target.value })}
+                          className="w-full text-xs text-center font-bold px-2 py-1.5 bg-white border border-onyx/15 rounded-md outline-none focus:ring-1 focus:ring-saffron/40 uppercase"
+                        />
                       </div>
 
                       <div className="w-24">
