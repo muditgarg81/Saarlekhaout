@@ -245,15 +245,17 @@ export async function generatePDF(
         7: { cellWidth: 39, halign: "right" }
       };
     } else {
-      headers = [["#", "Item Description", "Qty", "Basic Price", "Disc %", "GST %", "Total (INR)"]];
+      headers = [["#", "Item Description", "UOM", "Qty", "Basic Price", "Disc %", "GST %", "Total (INR)"]];
       rows = (data.lines || []).map((l: any, index: number) => {
         const itemSubtotal = l.qty * l.rate * (1 - l.discount / 100) * (1 + l.gstRate / 100);
         const name = l.itemName || l.item?.name || "Unknown Item";
         const spec = l.specification || l.spec || l.item?.specification || "";
         const itemDesc = spec ? `${name}\nTech Spec: ${spec}` : name;
+        const uom = (l.uom || l.item?.baseUom || "PCS").toUpperCase();
         return [
           index + 1,
           itemDesc,
+          uom,
           l.qty,
           `Rs. ${l.rate.toLocaleString("en-IN")}`,
           `${l.discount}%`,
@@ -263,12 +265,13 @@ export async function generatePDF(
       });
       columnStyles = {
         0: { cellWidth: 10 },
-        1: { cellWidth: 65 },
-        2: { cellWidth: 15, halign: "center" },
-        3: { cellWidth: 25, halign: "right" },
-        4: { cellWidth: 15, halign: "center" },
-        5: { cellWidth: 15, halign: "center" },
-        6: { cellWidth: 37, halign: "right" }
+        1: { cellWidth: 53 },
+        2: { cellWidth: 14, halign: "center" },
+        3: { cellWidth: 14, halign: "center" },
+        4: { cellWidth: 23, halign: "right" },
+        5: { cellWidth: 14, halign: "center" },
+        6: { cellWidth: 14, halign: "center" },
+        7: { cellWidth: 35, halign: "right" }
       };
     }
     

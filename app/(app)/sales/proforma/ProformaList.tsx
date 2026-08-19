@@ -7,7 +7,7 @@ import { Plus, X, Trash2, Send, ShoppingCart, Ban, Printer, Copy, FileText, Eye,
 import { can, SessionUser } from "@/lib/rbac";
 import { generatePDF } from "../pdfGenerator";
 
-interface Line { itemId: string; qty: number; rate: number; discount: number; gstRate: number; specification?: string | null }
+interface Line { itemId: string; uom?: string; qty: number; rate: number; discount: number; gstRate: number; specification?: string | null }
 interface Proforma {
   id: string; number: string; customerId: string; customer: string; customerGstin: string | null; customerPan: string | null;
   status: string; soId: string | null; proformaDate: string; validUpto: string | null;
@@ -69,7 +69,7 @@ export default function ProformaList({
   const setLine = (i: number, patch: Partial<Line>) => setLines(lines.map((l, idx) => (idx === i ? { ...l, ...patch } : l)));
   const onItemPick = (i: number, id: string) => {
     const it = itemById.get(id);
-    setLine(i, { itemId: id, gstRate: it?.gstRate ?? 18, specification: it?.specification ?? "" });
+    setLine(i, { itemId: id, uom: it?.baseUom || "PCS", gstRate: it?.gstRate ?? 18, specification: it?.specification ?? "" });
   };
 
   const pickCustomer = (id: string) => {
@@ -331,6 +331,7 @@ export default function ProformaList({
                   <thead className="bg-cream-light text-onyx/60 uppercase">
                     <tr>
                       <th className="text-left px-2 py-2">Item</th>
+                      <th className="px-2 py-2 w-20 text-center">UOM</th>
                       <th className="px-2 py-2 w-24 text-center">Qty</th>
                       <th className="px-2 py-2 w-28 text-center">Rate</th>
                       <th className="px-2 py-2 w-20 text-center">Disc%</th>
@@ -347,6 +348,15 @@ export default function ProformaList({
                             <option value="">Select…</option>
                             {items.map((it) => (<option key={it.id} value={it.id}>{it.name} ({it.code})</option>))}
                           </select>
+                        </td>
+                        <td className="px-2 py-1">
+                          <input
+                            type="text"
+                            placeholder="UOM"
+                            value={l.uom !== undefined ? l.uom : (l.itemId ? itemById.get(l.itemId)?.baseUom || "PCS" : "PCS")}
+                            onChange={(e) => setLine(i, { uom: e.target.value })}
+                            className="w-full text-xs text-center font-bold px-2 py-1.5 bg-white border border-onyx/15 rounded outline-none focus:ring-1 focus:ring-saffron/40 uppercase"
+                          />
                         </td>
                         <td className="px-2 py-1"><input type="number" className={cellCls} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} /></td>
                         <td className="px-2 py-1"><input type="number" className={cellCls} value={l.rate} onChange={(e) => setLine(i, { rate: Number(e.target.value) })} /></td>

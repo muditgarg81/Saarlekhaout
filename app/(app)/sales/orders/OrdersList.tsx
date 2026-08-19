@@ -57,7 +57,7 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-800 border-red-200",
 };
 
-type Line = { itemId: string; qty: number; rate: number; discount: number; gstRate: number; specification: string };
+type Line = { itemId: string; uom?: string; qty: number; rate: number; discount: number; gstRate: number; specification: string };
 
 export default function OrdersList({
   initialOrders,
@@ -168,7 +168,7 @@ export default function OrdersList({
 
   const onItemPick = (i: number, itemId: string) => {
     const it = itemById.get(itemId);
-    setLine(i, { itemId, gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
+    setLine(i, { itemId, uom: it?.baseUom || "PCS", gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
   const handleCustomerPick = (id: string) => {
@@ -565,6 +565,7 @@ export default function OrdersList({
                   <thead className="bg-cream-light text-onyx/60 uppercase">
                     <tr>
                       <th className="text-left px-2 py-2">Item</th>
+                      <th className="px-2 py-2 w-20 text-center">UOM</th>
                       <th className="px-2 py-2 w-24 text-center">Qty</th>
                       <th className="px-2 py-2 w-28 text-center">Rate</th>
                       <th className="px-2 py-2 w-20 text-center">Disc%</th>
@@ -584,6 +585,15 @@ export default function OrdersList({
                               onChange={(val) => onItemPick(i, val)}
                               placeholder="Select Item..."
                               onCreateItem={handleQuickCreateItem}
+                            />
+                          </td>
+                          <td className="px-2 py-1">
+                            <input
+                              type="text"
+                              placeholder="UOM"
+                              value={l.uom !== undefined ? l.uom : (l.itemId ? itemById.get(l.itemId)?.baseUom || "PCS" : "PCS")}
+                              onChange={(e) => setLine(i, { uom: e.target.value })}
+                              className="w-full text-xs text-center font-bold px-2 py-1.5 bg-white border border-onyx/15 rounded outline-none focus:ring-1 focus:ring-saffron/40 uppercase"
                             />
                           </td>
                           <td className="px-2 py-1"><input type="number" className={cellCls} value={l.qty} onChange={(e) => setLine(i, { qty: Number(e.target.value) })} /></td>

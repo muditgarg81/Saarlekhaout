@@ -56,7 +56,7 @@ const STATUS_STYLES: Record<string, string> = {
   CANCELLED: "bg-red-100 text-red-800 border-red-200",
 };
 
-type Line = { itemId: string; qty: number; rate: number; discount: number; gstRate: number; specification: string };
+type Line = { itemId: string; uom?: string; qty: number; rate: number; discount: number; gstRate: number; specification: string };
 
 export default function QuotationsList({
   initialQuotations,
@@ -169,7 +169,7 @@ export default function QuotationsList({
 
   const onItemPick = (i: number, itemId: string) => {
     const it = itemById.get(itemId);
-    setLine(i, { itemId, gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
+    setLine(i, { itemId, uom: it?.baseUom || "PCS", gstRate: it?.gstRate ?? 18, specification: it?.specification || "" });
   };
 
   const handleCustomerPick = (id: string) => {
@@ -654,6 +654,7 @@ export default function QuotationsList({
                 {lines.length > 0 && (
                   <div className="flex items-center gap-3 px-3 text-[10px] font-bold text-onyx/50 uppercase tracking-wider select-none mb-1">
                     <div className="flex-1 min-w-[200px]">Item Name / Code</div>
+                    <div className="w-20 text-center">UOM</div>
                     <div className="w-24 text-center">Qty</div>
                     <div className="w-28 text-center">Basic Price (Rate)</div>
                     <div className="w-20 text-center">Discount %</div>
@@ -672,6 +673,16 @@ export default function QuotationsList({
                           onChange={(val) => onItemPick(idx, val)}
                           placeholder="Pick Item"
                           onCreateItem={handleQuickCreateItem}
+                        />
+                      </div>
+
+                      <div className="w-20">
+                        <input
+                          type="text"
+                          placeholder="UOM"
+                          value={l.uom !== undefined ? l.uom : (l.itemId ? itemById.get(l.itemId)?.baseUom || "PCS" : "PCS")}
+                          onChange={(e) => setLine(idx, { uom: e.target.value })}
+                          className="w-full text-xs text-center font-bold px-2 py-1.5 bg-white border border-onyx/15 rounded-md outline-none focus:ring-1 focus:ring-saffron/40 uppercase"
                         />
                       </div>
 
@@ -842,6 +853,7 @@ export default function QuotationsList({
                   <thead className="bg-cream-light text-onyx/60 font-semibold text-[10px] uppercase tracking-wider">
                     <tr>
                       <th className="text-left px-3 py-2">Item Details</th>
+                      <th className="text-center px-3 py-2 w-20">UOM</th>
                       <th className="text-center px-3 py-2 w-20">Qty</th>
                       <th className="text-right px-3 py-2 w-28">Basic Price</th>
                       <th className="text-center px-3 py-2 w-20">Disc %</th>
@@ -864,6 +876,7 @@ export default function QuotationsList({
                               </span>
                             )}
                           </td>
+                          <td className="px-3 py-2.5 text-center font-bold text-onyx/75 uppercase">{l.uom || item?.baseUom || "PCS"}</td>
                           <td className="px-3 py-2.5 text-center font-medium text-onyx">{l.qty}</td>
                           <td className="px-3 py-2.5 text-right font-medium text-onyx">₹{l.rate.toLocaleString("en-IN")}</td>
                           <td className="px-3 py-2.5 text-center text-onyx/75">{l.discount}%</td>

@@ -47,6 +47,7 @@ interface ItemOpt {
   id: string;
   code: string;
   name: string;
+  baseUom?: string;
 }
 
 interface CustOpt {
@@ -58,6 +59,7 @@ interface CustOpt {
 interface LineInput {
   boxNo: string;
   itemId: string;
+  uom?: string;
   qty: number;
   grossWeight: number;
   netWeight: number;
@@ -396,6 +398,7 @@ export default function PackingListsClient({
                     <tr>
                       <th className="text-left px-3 py-2 w-28">Bale / Pallet</th>
                       <th className="text-left px-3 py-2">Item *</th>
+                      <th className="px-3 py-2 w-20 text-center">UOM</th>
                       <th className="px-3 py-2 w-24 text-center">Qty *</th>
                       <th className="px-3 py-2 w-24">Net Wt (kg)</th>
                       <th className="px-3 py-2 w-24">Tare Wt (kg)</th>
@@ -420,9 +423,21 @@ export default function PackingListsClient({
                           <SearchableItemSelect
                             items={localItems.map((i) => ({ id: i.id, code: i.code, name: i.name }))}
                             value={l.itemId}
-                            onChange={(val) => updateLine(idx, { itemId: val })}
+                            onChange={(val) => {
+                              const it = localItems.find(i => i.id === val);
+                              updateLine(idx, { itemId: val, uom: it?.baseUom || "PCS" });
+                            }}
                             placeholder="Select item..."
                             onCreateItem={handleQuickCreateItem}
+                          />
+                        </td>
+                        <td className="px-3 py-1.5">
+                          <input
+                            type="text"
+                            className="w-full text-xs text-center font-bold px-2 py-1.5 bg-white border border-onyx/15 rounded-lg outline-none focus:ring-1 focus:ring-saffron/40 uppercase"
+                            value={l.uom !== undefined ? l.uom : (l.itemId ? localItems.find(i => i.id === l.itemId)?.baseUom || "PCS" : "PCS")}
+                            onChange={(e) => updateLine(idx, { uom: e.target.value })}
+                            placeholder="UOM"
                           />
                         </td>
                         <td className="px-3 py-1.5">
