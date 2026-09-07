@@ -293,10 +293,10 @@ export default function QuotationsList({
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-3 sm:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-onyx text-saffron flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-onyx text-saffron flex items-center justify-center shrink-0">
             <FileText size={20} />
           </div>
           <div>
@@ -319,15 +319,15 @@ export default function QuotationsList({
               setLines([{ itemId: "", uom: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
               setIsOpen(true);
             }}
-            className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm"
+            className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm shrink-0"
           >
             <Plus size={16} /> New Quotation
           </button>
         )}
       </div>
 
-      <div className="bg-white border border-onyx/10 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-onyx/10 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-cream-light text-onyx/60 text-xs uppercase tracking-wide">
             <tr>
               <th className="text-left px-4 py-3 font-semibold">QT #</th>

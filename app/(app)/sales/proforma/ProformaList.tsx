@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { createProforma, sendProforma, convertProformaToSalesOrder, cancelProforma, recordProformaAdvance } from "@/app/actions/proformas";
-import { Plus, X, Trash2, Send, ShoppingCart, Ban, Printer, Copy, FileText, Eye, DollarSign, CheckCircle2 } from "lucide-react";
+import { createProforma, updateProforma, sendProforma, convertProformaToSalesOrder, cancelProforma, recordProformaAdvance } from "@/app/actions/proformas";
+import { Plus, X, Trash2, Send, ShoppingCart, Ban, Printer, Copy, FileText, Eye, DollarSign, CheckCircle2, Pencil } from "lucide-react";
 import { can, SessionUser } from "@/lib/rbac";
 import { generatePDF } from "../pdfGenerator";
 
@@ -49,6 +49,7 @@ export default function ProformaList({
   const [otherCharges, setOtherCharges] = useState<number>(0);
   const [advanceReceived, setAdvanceReceived] = useState<number>(0);
   const [editingAdvanceId, setEditingAdvanceId] = useState<string | null>(null);
+  const [editingProformaId, setEditingProformaId] = useState<string | null>(null);
   const [advanceInput, setAdvanceInput] = useState<string>("");
   const [billingAddress, setBillingAddress] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -112,7 +113,32 @@ export default function ProformaList({
     setAdvanceReceived(p.advanceReceived || 0);
   };
 
+  const handleEditProforma = (p: Proforma) => {
+    setEditingProformaId(p.id);
+    setCustomerId(p.customerId || "");
+    setValidUpto(p.validUpto ? p.validUpto.slice(0, 10) : "");
+    setPaymentTerms(p.paymentTerms || "");
+    setDeliveryTerms(p.deliveryTerms || "");
+    setPlaceOfSupply(p.placeOfSupply || "");
+    setNotes(p.notes || "");
+    setOtherCharges(p.otherCharges || 0);
+    setAdvanceReceived(p.advanceReceived || 0);
+    setBillingAddress(p.billingAddress || "");
+    setShippingAddress(p.shippingAddress || "");
+    setLines(p.lines?.map((l) => ({
+      itemId: l.itemId,
+      uom: l.uom || (itemById.get(l.itemId)?.baseUom) || "",
+      qty: l.qty,
+      rate: l.rate,
+      discount: l.discount,
+      gstRate: l.gstRate,
+      specification: l.specification || ""
+    })) || []);
+    setIsOpen(true);
+  };
+
   const resetForm = () => {
+    setEditingProformaId(null);
     setCustomerId(""); setValidUpto(""); setPaymentTerms(""); setDeliveryTerms(""); setPlaceOfSupply(""); setNotes(""); setOtherCharges(0); setAdvanceReceived(0);
     setBillingAddress(""); setShippingAddress("");
     setLines([{ itemId: "", qty: 1, rate: 0, discount: 0, gstRate: 18, specification: "" }]);
@@ -120,14 +146,17 @@ export default function ProformaList({
 
   const submit = async () => {
     setLoading(true); setError(null);
-    const res = await createProforma({
+    const payload = {
       customerId, validUpto: validUpto || null, paymentTerms: paymentTerms || null, deliveryTerms: deliveryTerms || null,
       placeOfSupply: placeOfSupply || null, notes: notes || null, otherCharges: Number(otherCharges) || 0, advanceReceived: Number(advanceReceived) || 0,
       billingAddress: billingAddress || null, shippingAddress: shippingAddress || null,
       lines: lines.filter((l) => l.itemId).map((l) => ({ itemId: l.itemId, uom: l.uom || null, qty: Number(l.qty), rate: Number(l.rate), discount: Number(l.discount), gstRate: Number(l.gstRate), specification: l.specification || null })),
-    } as any);
+    };
+    const res = editingProformaId
+      ? await updateProforma(editingProformaId, payload as any)
+      : await createProforma(payload as any);
     setLoading(false);
-    if (!res.success) { setError(res.error || "Failed to create proforma"); return; }
+    if (!res.success) { setError(res.error || "Failed to save proforma"); return; }
     setIsOpen(false); resetForm(); router.refresh();
   };
 
@@ -173,8 +202,8 @@ export default function ProformaList({
   };
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex items-center justify-between mb-6">
+    <div className="p-3 sm:p-6 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-onyx text-saffron flex items-center justify-center"><FileText size={20} /></div>
           <div>
@@ -183,14 +212,14 @@ export default function ProformaList({
           </div>
         </div>
         {canManage && (
-          <button onClick={() => { resetForm(); setError(null); setIsOpen(true); }} className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm">
+          <button onClick={() => { resetForm(); setError(null); setIsOpen(true); }} className="flex items-center gap-2 bg-saffron hover:bg-saffron-dark text-onyx font-semibold px-4 py-2 rounded-lg text-sm shrink-0">
             <Plus size={16} /> New Proforma
           </button>
         )}
       </div>
 
-      <div className="bg-white border border-onyx/10 rounded-xl overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="bg-white border border-onyx/10 rounded-xl overflow-x-auto">
+        <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-cream-light text-onyx/60 text-xs uppercase tracking-wide">
             <tr>
               <th className="text-left px-4 py-3 font-semibold">PI #</th>
@@ -219,6 +248,9 @@ export default function ProformaList({
                   <div className="flex items-center justify-end gap-1">
                     <button title="View Details on Screen" onClick={() => setViewProforma(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Eye size={15} /></button>
                     <button title="Export PDF / Print" onClick={() => print(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Printer size={15} /></button>
+                    {canManage && (p.status === "DRAFT" || p.status === "SENT") && (
+                      <button title="Edit Proforma" onClick={() => handleEditProforma(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Pencil size={15} /></button>
+                    )}
                     {canManage && p.status === "DRAFT" && (
                       <button title="Mark as sent" onClick={() => act(() => sendProforma(p.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600"><Send size={15} /></button>
                     )}
@@ -243,7 +275,7 @@ export default function ProformaList({
         <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
             <div className="flex items-center justify-between px-6 py-4 border-b border-onyx/10 sticky top-0 bg-white z-10">
-              <h2 className="font-heading font-bold text-onyx">New Proforma Invoice</h2>
+              <h2 className="font-heading font-bold text-onyx">{editingProformaId ? "Edit Proforma Invoice" : "New Proforma Invoice"}</h2>
               <button onClick={() => setIsOpen(false)} className="text-onyx/40 hover:text-onyx"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">

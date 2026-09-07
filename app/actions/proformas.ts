@@ -134,6 +134,80 @@ export async function createProforma(data: z.infer<typeof proformaSchema>) {
   }
 }
 
+export async function updateProforma(id: string, data: z.infer<typeof proformaSchema>) {
+  const session = await auth();
+  if (!session || !session.user) return { success: false, error: "Unauthorized" };
+  if (!can(session.user as any, "sales.invoice")) return { success: false, error: "Forbidden: Missing sales.invoice permission" };
+  const companyId = (session.user as any).companyId;
+  const actorId = (session.user as any).id;
+
+  try {
+    const validated = proformaSchema.parse(data);
+
+    const pi = await db.proformaInvoice.findFirst({
+      where: { id, companyId },
+      include: { lines: true },
+    });
+    if (!pi) return { success: false, error: "Proforma not found" };
+    if (pi.status === ProformaStatus.CONVERTED || pi.status === ProformaStatus.CANCELLED) {
+      return { success: false, error: `Cannot edit proforma in ${pi.status} state.` };
+    }
+
+    const customer = await db.customer.findFirst({ where: { id: validated.customerId, companyId, deletedAt: null } });
+    if (!customer) return { success: false, error: "Customer not found" };
+
+    const firstAddr = (list: any, legacy: string | null | undefined) => {
+      if (Array.isArray(list) && list.length > 0 && list[0]?.address) return String(list[0].address);
+      return legacy || null;
+    };
+    const billingAddress = validated.billingAddress || firstAddr((customer as any).billingAddresses, customer.billingAddress);
+    const shippingAddress = validated.shippingAddress || firstAddr((customer as any).shippingAddresses, customer.shippingAddress);
+
+    const company = await db.company.findUnique({ where: { id: companyId } });
+    const sellerState = company?.gstin?.slice(0, 2) || "";
+    const placeOfSupply = validated.placeOfSupply || customer.stateCode || customer.gstin?.slice(0, 2) || "";
+    const totals = computeTotals(validated.lines, placeOfSupply, sellerState, validated.otherCharges);
+
+    const result = await db.$transaction(async (tx) => {
+      await tx.proformaInvoiceLine.deleteMany({
+        where: { proformaId: id },
+      });
+
+      const updated = await tx.proformaInvoice.update({
+        where: { id },
+        data: {
+          customerId: customer.id,
+          quotationId: validated.quotationId || null,
+          validUpto: validated.validUpto ? new Date(validated.validUpto) : null,
+          paymentTerms: validated.paymentTerms || customer.paymentTerms || null,
+          deliveryTerms: validated.deliveryTerms || null,
+          placeOfSupply,
+          billingAddress,
+          shippingAddress,
+          notes: validated.notes || null,
+          otherCharges: validated.otherCharges,
+          advanceReceived: validated.advanceReceived || 0,
+          ...totals,
+          lines: {
+            create: validated.lines.map((l) => ({
+              itemId: l.itemId, uom: l.uom || null, qty: l.qty, rate: l.rate, discount: l.discount, gstRate: l.gstRate, specification: l.specification || null,
+            })),
+          },
+        },
+        include: { lines: true },
+      });
+      await logAudit(tx, companyId, actorId, "UPDATE", "ProformaInvoice", id, pi, updated);
+      return updated;
+    });
+
+    revalidatePath("/sales/proforma");
+    return { success: true, proforma: result };
+  } catch (err: any) {
+    console.error("Error updating proforma:", err);
+    return { success: false, error: err.message || "Failed to update proforma" };
+  }
+}
+
 export async function sendProforma(id: string) {
   const session = await auth();
   if (!session || !session.user) return { success: false, error: "Unauthorized" };
