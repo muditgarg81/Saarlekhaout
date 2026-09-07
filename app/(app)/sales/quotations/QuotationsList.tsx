@@ -98,6 +98,42 @@ export default function QuotationsList({
   const [billingAddressOptions, setBillingAddressOptions] = useState<any[]>([]);
   const [shippingAddressOptions, setShippingAddressOptions] = useState<any[]>([]);
   const [editingQuotationId, setEditingQuotationId] = useState<string | null>(null);
+  const [statusTab, setStatusTab] = useState<string>("ALL");
+
+  const handleEditQuotation = (q: Quotation) => {
+    setEditingQuotationId(q.id);
+    setCustomerId(q.customerId || "");
+    setValidUpto(q.validUpto ? q.validUpto.slice(0, 10) : "");
+    setPaymentTerms(q.paymentTerms || "");
+    setBillingAddress(q.billingAddress || "");
+    setShippingAddress(q.shippingAddress || "");
+    setPlaceOfSupply(q.placeOfSupply || "");
+    setTermsConditions(q.termsConditions || "");
+    setLeadTime(q.leadTime || "");
+    setDeliveryTerms(q.deliveryTerms || "");
+
+    const cust = localCustomers.find((c) => c.id === q.customerId);
+    if (cust) {
+      const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
+      const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
+      setBillingAddressOptions(bAddresses);
+      setShippingAddressOptions(sAddresses);
+    } else {
+      setBillingAddressOptions([]);
+      setShippingAddressOptions([]);
+    }
+
+    setLines(q.lines?.map((l: any) => ({
+      itemId: l.itemId,
+      uom: l.uom || (itemById.get(l.itemId)?.baseUom) || "",
+      qty: l.qty,
+      rate: l.rate,
+      discount: l.discount,
+      gstRate: l.gstRate,
+      specification: l.specification || "",
+    })) || []);
+    setIsOpen(true);
+  };
 
   useEffect(() => {
     if (isOpen && !termsConditions) {
@@ -326,7 +362,113 @@ export default function QuotationsList({
         )}
       </div>
 
-      <div className="bg-white border border-onyx/10 rounded-xl overflow-x-auto">
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 no-scrollbar">
+        {["ALL", "DRAFT", "PENDING_APPROVAL", "SENT", "ACCEPTED", "CANCELLED"].map((tab) => {
+          const count = tab === "ALL" ? quotations.length : quotations.filter((q) => q.status === tab).length;
+          return (
+            <button
+              key={tab}
+              onClick={() => setStatusTab(tab)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                statusTab === tab
+                  ? "bg-onyx text-saffron font-bold shadow-sm"
+                  : "bg-white text-onyx/70 hover:bg-cream-light border border-onyx/10"
+              }`}
+            >
+              {tab === "ALL" ? `All (${count})` : `${tab.replace(/_/g, " ")} (${count})`}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mobile Card List View (< md) */}
+      <div className="block md:hidden space-y-3">
+        {quotations
+          .filter((q) => statusTab === "ALL" || q.status === statusTab)
+          .map((q) => (
+            <div key={q.id} className="bg-white border border-onyx/10 rounded-xl p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-onyx/5">
+                <span onClick={() => setReviewQuotation(q)} className="font-mono font-bold text-xs text-saffron-dark cursor-pointer">{q.number}</span>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLES[q.status]}`}>
+                  {q.status.replace(/_/g, " ")}
+                </span>
+              </div>
+
+              <div onClick={() => setReviewQuotation(q)} className="cursor-pointer">
+                <h3 className="text-sm font-bold text-onyx leading-tight">{q.customer}</h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs bg-cream-light/30 p-2.5 rounded-lg border border-onyx/5">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-onyx/50 block">Date</span>
+                  <span className="font-medium text-onyx">{new Date(q.quotationDate).toLocaleDateString("en-IN")}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-onyx/50 block">Valid Upto</span>
+                  <span className="font-medium text-onyx">{q.validUpto ? new Date(q.validUpto).toLocaleDateString("en-IN") : "—"}</span>
+                </div>
+                <div className="col-span-2 pt-1 border-t border-onyx/5 flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-onyx/50">Total Value</span>
+                  <span className="text-sm font-bold text-saffron-dark">₹{q.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-1.5 pt-1 flex-wrap">
+                <button onClick={() => setReviewQuotation(q)} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-cream-light text-onyx rounded-md hover:bg-cream">
+                  <Eye size={13} /> View
+                </button>
+                {(q.status === "DRAFT" || q.status === "SENT" || q.status === "ACCEPTED") && canCreate && (
+                  <>
+                    <button onClick={() => handleEditQuotation(q)} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-cream-light text-onyx rounded-md hover:bg-cream">
+                      <Pencil size={13} /> Edit
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (confirm(`Delete ${q.number}?`)) {
+                          const res = await deleteQuotation(q.id);
+                          if (!res.success) alert(res.error);
+                          else router.refresh();
+                        }
+                      }}
+                      className="p-1.5 rounded hover:bg-red-50 text-red-600"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </>
+                )}
+                {q.status === "DRAFT" && canCreate && (
+                  <button onClick={() => act(() => submitQuotation(q.id))} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100">
+                    <Send size={13} /> Submit
+                  </button>
+                )}
+                {q.status === "PENDING_APPROVAL" && canApprove && (
+                  <>
+                    <button onClick={() => act(() => approveQuotation(q.id))} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-green-50 text-green-700 rounded-md hover:bg-green-100">
+                      <Check size={13} /> Approve
+                    </button>
+                    <button onClick={() => act(() => rejectQuotation(q.id, "Rejected"))} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-red-50 text-red-700 rounded-md hover:bg-red-100">
+                      <Ban size={13} /> Reject
+                    </button>
+                  </>
+                )}
+                {q.status === "SENT" && canCreate && (
+                  <button onClick={() => act(() => convertToSalesOrder(q.id))} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-green-100 text-green-800 rounded-md hover:bg-green-200">
+                    <ShoppingCart size={13} /> Convert
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        {quotations.filter((q) => statusTab === "ALL" || q.status === statusTab).length === 0 && (
+          <div className="bg-white border border-onyx/10 rounded-xl p-8 text-center text-onyx/40 text-sm">
+            No quotations found for this view.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View (>= md) */}
+      <div className="hidden md:block bg-white border border-onyx/10 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-cream-light text-onyx/60 text-xs uppercase tracking-wide">
             <tr>
@@ -340,113 +482,82 @@ export default function QuotationsList({
             </tr>
           </thead>
           <tbody className="divide-y divide-onyx/5">
-            {quotations.map((q) => (
-              <tr key={q.id} className="hover:bg-cream-light/40 cursor-pointer">
-                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 font-mono text-xs text-onyx/70">{q.number}</td>
-                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx">{q.customer}</td>
-                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx/60 text-xs">{new Date(q.quotationDate).toLocaleDateString("en-IN")}</td>
-                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx/60 text-xs">{q.validUpto ? new Date(q.validUpto).toLocaleDateString("en-IN") : "—"}</td>
-                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-right font-medium text-onyx">
-                  ₹{q.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-                </td>
-                <td onClick={() => setReviewQuotation(q)} className="px-4 py-3">
-                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${STATUS_STYLES[q.status]}`}>
-                    {q.status.replace(/_/g, " ")}
-                  </span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-1">
-                    <button title="Review Details" onClick={() => setReviewQuotation(q)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
-                      <Eye size={15} />
-                    </button>
-                    {(q.status === "DRAFT" || q.status === "SENT" || q.status === "ACCEPTED") && canCreate && (
-                      <>
-                        <button
-                          title="Edit Quotation"
-                          onClick={() => {
-                            setEditingQuotationId(q.id);
-                            setCustomerId(q.customerId || "");
-                            setValidUpto(q.validUpto ? q.validUpto.slice(0, 10) : "");
-                            setPaymentTerms(q.paymentTerms || "");
-                            setBillingAddress(q.billingAddress || "");
-                            setShippingAddress(q.shippingAddress || "");
-                            setPlaceOfSupply(q.placeOfSupply || "");
-                            setTermsConditions(q.termsConditions || "");
-                            setLeadTime(q.leadTime || "");
-                            setDeliveryTerms(q.deliveryTerms || "");
-
-                            const cust = localCustomers.find((c) => c.id === q.customerId);
-                            if (cust) {
-                              const bAddresses = cust.billingAddresses ? JSON.parse(JSON.stringify(cust.billingAddresses)) : [];
-                              const sAddresses = cust.shippingAddresses ? JSON.parse(JSON.stringify(cust.shippingAddresses)) : [];
-                              setBillingAddressOptions(bAddresses);
-                              setShippingAddressOptions(sAddresses);
-                            } else {
-                              setBillingAddressOptions([]);
-                              setShippingAddressOptions([]);
-                            }
-
-                            setLines(q.lines?.map((l: any) => ({
-                              itemId: l.itemId,
-                              uom: l.uom || (itemById.get(l.itemId)?.baseUom) || "PCS",
-                              qty: l.qty,
-                              rate: l.rate,
-                              discount: l.discount,
-                              gstRate: l.gstRate,
-                              specification: l.specification || "",
-                            })) || []);
-                            setIsOpen(true);
-                          }}
-                          className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                        <button
-                          title="Delete Quotation"
-                          onClick={async () => {
-                            if (confirm(`Are you sure you want to delete quotation ${q.number}?`)) {
-                              const res = await deleteQuotation(q.id);
-                              if (!res.success) alert(res.error || "Failed to delete quotation");
-                              else router.refresh();
-                            }
-                          }}
-                          className="p-1.5 rounded hover:bg-red-50 text-red-600"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      </>
-                    )}
-                    {q.status === "DRAFT" && canCreate && (
-                      <button title="Submit for Approval" onClick={() => act(() => submitQuotation(q.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
-                        <Send size={15} />
+            {quotations
+              .filter((q) => statusTab === "ALL" || q.status === statusTab)
+              .map((q) => (
+                <tr key={q.id} className="hover:bg-cream-light/40 cursor-pointer">
+                  <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 font-mono text-xs text-onyx/70">{q.number}</td>
+                  <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx">{q.customer}</td>
+                  <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx/60 text-xs">{new Date(q.quotationDate).toLocaleDateString("en-IN")}</td>
+                  <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-onyx/60 text-xs">{q.validUpto ? new Date(q.validUpto).toLocaleDateString("en-IN") : "—"}</td>
+                  <td onClick={() => setReviewQuotation(q)} className="px-4 py-3 text-right font-medium text-onyx">
+                    ₹{q.value.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                  </td>
+                  <td onClick={() => setReviewQuotation(q)} className="px-4 py-3">
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${STATUS_STYLES[q.status]}`}>
+                      {q.status.replace(/_/g, " ")}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button title="Review Details" onClick={() => setReviewQuotation(q)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70">
+                        <Eye size={15} />
                       </button>
-                    )}
-                    {q.status === "PENDING_APPROVAL" && canApprove && (
-                      <>
-                        <button title="Approve" onClick={() => act(() => approveQuotation(q.id))} className="p-1.5 rounded hover:bg-green-50 text-green-600">
-                          <Check size={15} />
+                      {(q.status === "DRAFT" || q.status === "SENT" || q.status === "ACCEPTED") && canCreate && (
+                        <>
+                          <button
+                            title="Edit Quotation"
+                            onClick={() => handleEditQuotation(q)}
+                            className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                          <button
+                            title="Delete Quotation"
+                            onClick={async () => {
+                              if (confirm(`Are you sure you want to delete quotation ${q.number}?`)) {
+                                const res = await deleteQuotation(q.id);
+                                if (!res.success) alert(res.error || "Failed to delete quotation");
+                                else router.refresh();
+                              }
+                            }}
+                            className="p-1.5 rounded hover:bg-red-50 text-red-600"
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </>
+                      )}
+                      {q.status === "DRAFT" && canCreate && (
+                        <button title="Submit for Approval" onClick={() => act(() => submitQuotation(q.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600">
+                          <Send size={15} />
                         </button>
-                        <button title="Reject" onClick={() => act(() => rejectQuotation(q.id, "Rejected"))} className="p-1.5 rounded hover:bg-red-50 text-red-600">
+                      )}
+                      {q.status === "PENDING_APPROVAL" && canApprove && (
+                        <>
+                          <button title="Approve" onClick={() => act(() => approveQuotation(q.id))} className="p-1.5 rounded hover:bg-green-50 text-green-600">
+                            <Check size={15} />
+                          </button>
+                          <button title="Reject" onClick={() => act(() => rejectQuotation(q.id, "Rejected"))} className="p-1.5 rounded hover:bg-red-50 text-red-600">
+                            <Ban size={15} />
+                          </button>
+                        </>
+                      )}
+                      {q.status === "SENT" && canCreate && (
+                        <button title="Convert to Sales Order" onClick={() => act(() => convertToSalesOrder(q.id))} className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-1 border border-green-200 rounded hover:bg-green-100">
+                          <ShoppingCart size={13} />
+                          <span>Accept & Convert</span>
+                        </button>
+                      )}
+                      {[QuotationStatus.DRAFT, QuotationStatus.PENDING_APPROVAL, QuotationStatus.SENT].includes(q.status as any) && canCreate && (
+                        <button title="Cancel Quotation" onClick={() => act(() => cancelQuotation(q.id, "Cancelled"))} className="p-1.5 rounded hover:bg-red-50 text-red-500">
                           <Ban size={15} />
                         </button>
-                      </>
-                    )}
-                    {q.status === "SENT" && canCreate && (
-                      <button title="Convert to Sales Order" onClick={() => act(() => convertToSalesOrder(q.id))} className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-1 border border-green-200 rounded hover:bg-green-100">
-                        <ShoppingCart size={13} />
-                        <span>Accept & Convert</span>
-                      </button>
-                    )}
-                    {[QuotationStatus.DRAFT, QuotationStatus.PENDING_APPROVAL, QuotationStatus.SENT].includes(q.status as any) && canCreate && (
-                      <button title="Cancel Quotation" onClick={() => act(() => cancelQuotation(q.id, "Cancelled"))} className="p-1.5 rounded hover:bg-red-50 text-red-500">
-                        <Ban size={15} />
-                      </button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {quotations.length === 0 && (
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            {quotations.filter((q) => statusTab === "ALL" || q.status === statusTab).length === 0 && (
               <tr>
                 <td colSpan={7} className="px-4 py-12 text-center text-onyx/40 text-sm">No quotations generated yet.</td>
               </tr>

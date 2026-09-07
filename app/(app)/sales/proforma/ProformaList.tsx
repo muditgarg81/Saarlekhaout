@@ -50,6 +50,7 @@ export default function ProformaList({
   const [advanceReceived, setAdvanceReceived] = useState<number>(0);
   const [editingAdvanceId, setEditingAdvanceId] = useState<string | null>(null);
   const [editingProformaId, setEditingProformaId] = useState<string | null>(null);
+  const [statusTab, setStatusTab] = useState<string>("ALL");
   const [advanceInput, setAdvanceInput] = useState<string>("");
   const [billingAddress, setBillingAddress] = useState("");
   const [shippingAddress, setShippingAddress] = useState("");
@@ -218,7 +219,92 @@ export default function ProformaList({
         )}
       </div>
 
-      <div className="bg-white border border-onyx/10 rounded-xl overflow-x-auto">
+      {/* Status Filter Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-2 mb-4 no-scrollbar">
+        {["ALL", "DRAFT", "SENT", "CONVERTED", "CANCELLED"].map((tab) => {
+          const count = tab === "ALL" ? proformas.length : proformas.filter((p) => p.status === tab).length;
+          return (
+            <button
+              key={tab}
+              onClick={() => setStatusTab(tab)}
+              className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition cursor-pointer ${
+                statusTab === tab
+                  ? "bg-onyx text-saffron font-bold shadow-sm"
+                  : "bg-white text-onyx/70 hover:bg-cream-light border border-onyx/10"
+              }`}
+            >
+              {tab === "ALL" ? `All (${count})` : `${tab} (${count})`}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Mobile Card List View (< md) */}
+      <div className="block md:hidden space-y-3">
+        {proformas
+          .filter((p) => statusTab === "ALL" || p.status === statusTab)
+          .map((p) => (
+            <div key={p.id} className="bg-white border border-onyx/10 rounded-xl p-4 shadow-sm space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-onyx/5">
+                <button onClick={() => setViewProforma(p)} className="font-mono font-bold text-xs text-saffron-dark hover:underline cursor-pointer">
+                  {p.number}
+                </button>
+                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${STATUS_STYLES[p.status]}`}>{p.status}</span>
+              </div>
+
+              <div onClick={() => setViewProforma(p)} className="cursor-pointer">
+                <h3 className="text-sm font-bold text-onyx leading-tight">{p.customer}</h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs bg-cream-light/30 p-2.5 rounded-lg border border-onyx/5">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-onyx/50 block">Date</span>
+                  <span className="font-medium text-onyx">{new Date(p.proformaDate).toLocaleDateString("en-IN")}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-onyx/50 block">Valid Upto</span>
+                  <span className="font-medium text-onyx">{p.validUpto ? new Date(p.validUpto).toLocaleDateString("en-IN") : "—"}</span>
+                </div>
+                <div className="col-span-2 pt-1 border-t border-onyx/5 flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-onyx/50">Total Amount</span>
+                  <span className="text-sm font-bold text-saffron-dark">{inr(p.totalAmount)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-1.5 pt-1 flex-wrap">
+                <button onClick={() => setViewProforma(p)} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-cream-light text-onyx rounded-md hover:bg-cream">
+                  <Eye size={13} /> View
+                </button>
+                <button onClick={() => print(p)} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-cream-light text-onyx rounded-md hover:bg-cream">
+                  <Printer size={13} /> PDF
+                </button>
+                {canManage && (p.status === "DRAFT" || p.status === "SENT") && (
+                  <button onClick={() => handleEditProforma(p)} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-cream-light text-onyx rounded-md hover:bg-cream">
+                    <Pencil size={13} /> Edit
+                  </button>
+                )}
+                {canManage && p.status === "DRAFT" && (
+                  <button onClick={() => act(() => sendProforma(p.id))} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-blue-50 text-blue-700 rounded-md hover:bg-blue-100">
+                    <Send size={13} /> Send
+                  </button>
+                )}
+                {canManage && (p.status === "DRAFT" || p.status === "SENT") && (
+                  <button onClick={() => { if (confirm(`Convert ${p.number} to a confirmed Sales Order?`)) act(() => convertProformaToSalesOrder(p.id)); }} className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 bg-green-100 text-green-800 rounded-md hover:bg-green-200">
+                    <ShoppingCart size={13} /> Convert
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        {proformas.filter((p) => statusTab === "ALL" || p.status === statusTab).length === 0 && (
+          <div className="bg-white border border-onyx/10 rounded-xl p-8 text-center text-onyx/40 text-sm">
+            No proforma invoices found for this view.
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Table View (>= md) */}
+      <div className="hidden md:block bg-white border border-onyx/10 rounded-xl overflow-x-auto">
         <table className="w-full text-sm min-w-[700px]">
           <thead className="bg-cream-light text-onyx/60 text-xs uppercase tracking-wide">
             <tr>
@@ -231,40 +317,42 @@ export default function ProformaList({
             </tr>
           </thead>
           <tbody className="divide-y divide-onyx/5">
-            {proformas.map((p) => (
-              <tr key={p.id} className="hover:bg-cream-light/40">
-                <td className="px-4 py-3 font-mono text-xs">
-                  <button onClick={() => setViewProforma(p)} className="font-bold text-saffron-dark hover:underline cursor-pointer">
-                    {p.number}
-                  </button>
-                </td>
-                <td className="px-4 py-3 text-onyx">{p.customer}</td>
-                <td className="px-4 py-3 text-onyx/60 text-xs">{new Date(p.proformaDate).toLocaleDateString("en-IN")}</td>
-                <td className="px-4 py-3 text-right font-medium text-onyx">{inr(p.totalAmount)}</td>
-                <td className="px-4 py-3">
-                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${STATUS_STYLES[p.status]}`}>{p.status}</span>
-                </td>
-                <td className="px-4 py-3">
-                  <div className="flex items-center justify-end gap-1">
-                    <button title="View Details on Screen" onClick={() => setViewProforma(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Eye size={15} /></button>
-                    <button title="Export PDF / Print" onClick={() => print(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Printer size={15} /></button>
-                    {canManage && (p.status === "DRAFT" || p.status === "SENT") && (
-                      <button title="Edit Proforma" onClick={() => handleEditProforma(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Pencil size={15} /></button>
-                    )}
-                    {canManage && p.status === "DRAFT" && (
-                      <button title="Mark as sent" onClick={() => act(() => sendProforma(p.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600"><Send size={15} /></button>
-                    )}
-                    {canManage && (p.status === "DRAFT" || p.status === "SENT") && (
-                      <button title="Capture → Sales Order (then dispatch & invoice)" onClick={() => { if (confirm(`Convert ${p.number} to a confirmed Sales Order?`)) act(() => convertProformaToSalesOrder(p.id)); }} className="p-1.5 rounded hover:bg-green-50 text-green-600"><ShoppingCart size={15} /></button>
-                    )}
-                    {canManage && p.status !== "CONVERTED" && p.status !== "CANCELLED" && (
-                      <button title="Cancel" onClick={() => act(() => cancelProforma(p.id, "Cancelled"))} className="p-1.5 rounded hover:bg-red-50 text-red-500"><Ban size={15} /></button>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {proformas.length === 0 && (
+            {proformas
+              .filter((p) => statusTab === "ALL" || p.status === statusTab)
+              .map((p) => (
+                <tr key={p.id} className="hover:bg-cream-light/40">
+                  <td className="px-4 py-3 font-mono text-xs">
+                    <button onClick={() => setViewProforma(p)} className="font-bold text-saffron-dark hover:underline cursor-pointer">
+                      {p.number}
+                    </button>
+                  </td>
+                  <td className="px-4 py-3 text-onyx">{p.customer}</td>
+                  <td className="px-4 py-3 text-onyx/60 text-xs">{new Date(p.proformaDate).toLocaleDateString("en-IN")}</td>
+                  <td className="px-4 py-3 text-right font-medium text-onyx">{inr(p.totalAmount)}</td>
+                  <td className="px-4 py-3">
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full border ${STATUS_STYLES[p.status]}`}>{p.status}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center justify-end gap-1">
+                      <button title="View Details on Screen" onClick={() => setViewProforma(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Eye size={15} /></button>
+                      <button title="Export PDF / Print" onClick={() => print(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Printer size={15} /></button>
+                      {canManage && (p.status === "DRAFT" || p.status === "SENT") && (
+                        <button title="Edit Proforma" onClick={() => handleEditProforma(p)} className="p-1.5 rounded hover:bg-onyx/5 text-onyx/70"><Pencil size={15} /></button>
+                      )}
+                      {canManage && p.status === "DRAFT" && (
+                        <button title="Mark as sent" onClick={() => act(() => sendProforma(p.id))} className="p-1.5 rounded hover:bg-blue-50 text-blue-600"><Send size={15} /></button>
+                      )}
+                      {canManage && (p.status === "DRAFT" || p.status === "SENT") && (
+                        <button title="Capture → Sales Order (then dispatch & invoice)" onClick={() => { if (confirm(`Convert ${p.number} to a confirmed Sales Order?`)) act(() => convertProformaToSalesOrder(p.id)); }} className="p-1.5 rounded hover:bg-green-50 text-green-600"><ShoppingCart size={15} /></button>
+                      )}
+                      {canManage && p.status !== "CONVERTED" && p.status !== "CANCELLED" && (
+                        <button title="Cancel" onClick={() => act(() => cancelProforma(p.id, "Cancelled"))} className="p-1.5 rounded hover:bg-red-50 text-red-500"><Ban size={15} /></button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            {proformas.filter((p) => statusTab === "ALL" || p.status === statusTab).length === 0 && (
               <tr><td colSpan={6} className="px-4 py-12 text-center text-onyx/40 text-sm">No proforma invoices yet.</td></tr>
             )}
           </tbody>
